@@ -146,8 +146,9 @@ de bord, pas présupposé.
 | Suite de non-régression sur métriques calculées (valeurs de référence figées) | Ajout | *à compléter* |
 | Routage par niveau d'effort (pragmatique, pas Spark) | Fiche initiale (simplifié) | *à compléter* |
 | Secrets en `.env`, permissions Claude Code restreintes | Fiche initiale (simplifié) | *à compléter* |
-| Graphify + Agent Skills via MCP (prise en main) | Fiche initiale + demande explicite | *à compléter* |
+| Graphify + Agent Skills via MCP (prise en main) | Fiche initiale + demande explicite | Installé en avance sur l'étape 7 (voir journal) — vérifié réel via web (package `graphifyy`, PyPI + GitHub, non fabriqué contrairement à d'autres éléments de la fiche source) |
 | Journal de bord coût/bénéfice par pratique | Ajout | *à compléter* |
+| AGENTS.md canonique + CLAUDE.md en import (`@AGENTS.md`) | Demande explicite | Claude Code ne lit pas AGENTS.md nativement (vérifié) ; le symlink/import est le pattern officiellement supporté — repo compréhensible par n'importe quel agent sans rien casser côté Claude Code |
 
 ### 2.2 Pratiques connues, non appliquées ici (bon à savoir)
 
@@ -168,5 +169,22 @@ avec la raison, pas juste le constat.*
 
 ## 3. Journal de bord
 
-*(vide pour l'instant — rempli au fil des étapes avec : pratique observée, contexte,
-gain/coût constaté, verdict)*
+*(rempli au fil des étapes avec : pratique observée, contexte, gain/coût constaté, verdict)*
+
+### 2026-08-24 — Détour assumé : outillage avant cadrage
+
+Installation de Graphify et bascule AGENTS.md/CLAUDE.md faites juste après la
+configuration de base, donc avant l'étape 0 (cadrage Q&A) — en avance sur l'ordre
+défini en section 1. Décision explicite, pas un oubli :
+- Repo quasi vide → risque faible de casser quoi que ce soit, terrain sûr pour prendre
+  en main un nouvel outil.
+- Objectif explicite de prise en main de Graphify, indépendant du calendrier du projet.
+- Avant d'exécuter quoi que ce soit, vérification que les deux éléments cités par
+  l'utilisateur étaient réels (et pas un nouvel avatar du problème de la fiche
+  initiale) : Graphify existe et correspond à sa description (package `graphifyy` sur
+  PyPI, dépôt GitHub actif) ; AGENTS.md n'est en revanche PAS lu nativement par Claude
+  Code (vérifié par recherche web), d'où le choix du pattern import plutôt qu'un
+  remplacement pur et simple.
+- Point d'attention pour la suite : Graphify tourne sur un code encore vide — sa vraie
+  valeur (graphe de dépendances utile) ne pourra être évaluée qu'une fois du code réel
+  écrit. À réévaluer après l'étape 3 ou 4.
