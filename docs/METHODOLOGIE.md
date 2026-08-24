@@ -105,6 +105,20 @@ Toute tâche touchant plusieurs fichiers passe par une phase d'exploration en le
 seule (Plan Mode) avant l'édition. Toute tâche mono-fichier bien définie peut s'en
 passer — l'objectif est d'observer le point de bascule où le plan devient rentable.
 
+Ce n'est pas une bascule manuelle entre deux conversations séparées : c'est un mode qui
+change d'état **au sein de la même conversation**, initié à l'origine par l'agent
+lui-même sur les tâches non triviales — pas seulement sur demande explicite de
+l'utilisateur.
+
+**Comparaison écosystème :**
+
+| Outil | Mécanisme | Source |
+|---|---|---|
+| Claude Code | Plan Mode : bascule dans la même conversation (lecture seule → plan → validation → édition) | Comportement observé dans ce projet |
+| JetBrains Junie | Plan Mode natif (`Shift+Tab`, `/plan`, `Ctrl+P` pour la vue dédiée) ; séparation *Ask Mode* (planifier/discuter, aucune édition) / *Code Mode* (agent complet, édite et teste) | [Junie — Plan mode](https://junie.jetbrains.com/docs/junie-cli-plan-mode.html), [Junie — Ask vs Code mode](https://youtrack.jetbrains.com/articles/SUPPORT-A-1832/What-is-the-difference-between-ask-and-code-modes-in-Junie) |
+| Cursor | Pas de bascule native — pratique communautaire : explorer dans un thread, puis ouvrir un **nouveau** thread vierge nourri uniquement du plan/spec, pour repartir sur un contexte propre | Pratique d'usage rapportée, non une spec produit |
+| Google Antigravity | Fichiers de règles `.agents/rules` (projet, valeur par défaut) ou `~/.gemini/AGENTS.md` (global) ; `GEMINI.md` prioritaire sur `AGENTS.md` en cas de conflit ; limite de 12 000 caractères par fichier | [Antigravity — Rules](https://antigravity.google/docs/rules-workflows/) |
+
 ### Étape 5 — Routage par niveau d'effort selon la tâche
 
 Pas de "modèle Driver/Executor" façon Spark, mais une règle pragmatique : les tâches de

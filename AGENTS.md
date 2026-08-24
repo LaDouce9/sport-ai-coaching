@@ -29,6 +29,12 @@ MVP actuel : scripts/CLI + notebooks d'exploration, pas d'interface web.
 - Secrets (tokens OAuth) dans `.env`, jamais lus ni affichés par l'agent.
 - Pas de commit dans `data/` (contient des exports personnels réels).
 
+## Discipline Explore/Edit
+
+Toute modification touchant plusieurs fichiers, ou dont l'approche d'implémentation
+n'est pas déjà validée, démarre en Plan Mode avant toute édition — à l'initiative de
+l'agent, pas seulement sur demande explicite. Voir `docs/METHODOLOGIE.md` (étape 4).
+
 ## Référence
 
 - `docs/SPEC.md` : contrat fonctionnel (en attente de l'étape 0 de cadrage).
