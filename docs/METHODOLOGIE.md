@@ -188,3 +188,27 @@ défini en section 1. Décision explicite, pas un oubli :
 - Point d'attention pour la suite : Graphify tourne sur un code encore vide — sa vraie
   valeur (graphe de dépendances utile) ne pourra être évaluée qu'une fois du code réel
   écrit. À réévaluer après l'étape 3 ou 4.
+
+### 2026-08-24 — Étape 0 (cadrage Q&A) et étape 1 (SPEC.md V1)
+
+L'utilisateur a fourni un document produit complet (4 modules : ingestion, sports sans
+montre, coaching adaptatif, stratégie de course) en demandant explicitement de prioriser
+plutôt que de tout spécifier. Bon test réel de l'étape 0 :
+
+- Reformulation du périmètre réduit avant de poser des questions, pour valider la
+  compréhension avant d'investir du temps dans le détail.
+- Une des questions de cadrage (accès API Coros) a révélé un vrai risque technique non
+  mentionné dans le document produit : l'API développeur officielle Coros nécessite une
+  approbation "entreprise", inadaptée à un projet perso. Recherche web faite avant de
+  trancher plutôt que de supposer — a permis de découvrir une alternative pertinente
+  (serveur MCP Coros, self-service) et surtout un fait simplificateur décisif : Coros
+  était déjà synchronisé vers Strava sur le compte réel de l'utilisateur, ce qui rend
+  Strava seul suffisant pour le V1. **Sans cette vérification, le SPEC V1 aurait
+  probablement embarqué une intégration Coros risquée dès le départ.**
+- Gain concret de l'étape 0 : le périmètre V1 rédigé dans `SPEC.md` est net (ingestion
+  Strava + module sans-montre + charge par zone, rien d'autre), alors que le document
+  produit initial aurait naturellement tiré vers une spec beaucoup plus large.
+- Le mapping "activité → zones corporelles par défaut" proposé par l'utilisateur pendant
+  le Q&A a changé la conception du module de charge (poids par défaut + surcharge
+  manuelle plutôt que saisie manuelle pure) — exemple concret où le cadrage a amélioré
+  la conception, pas juste réduit le scope.
