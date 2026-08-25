@@ -126,6 +126,27 @@ raisonnement (choix d'architecture, cadrage) méritent un effort de réflexion p
 que les tâches mécaniques (renommage, nettoyage). À observer concrètement plutôt qu'à
 théoriser à l'avance.
 
+Vérifié le 25/08 (voir journal) : Claude Code ne fait **aucun routage automatique** par
+complexité de tâche — le principe ci-dessus est donc une discipline manuelle à appliquer
+soi-même, pas un comportement natif de l'outil. Seule nuance : quand l'agent principal
+délègue à un subagent (tool Agent), il peut choisir explicitement un modèle différent
+pour ce subagent — décision de l'IA au moment de l'orchestration, mais toujours
+explicite/paramétrée, pas un routage caché du système.
+
+**Comparaison écosystème :**
+
+| Outil | Mécanisme | Source |
+|---|---|---|
+| Claude Code | Aucun routage automatique par complexité — choix du modèle (`/model`, `--model`, `settings.json`) et de l'effort (`/effort`, `--effort`) toujours explicites ; `/fast` est un toggle manuel (bascule vers Opus) | [Model config](https://code.claude.com/docs/en/model-config.md), [Fast mode](https://code.claude.com/docs/en/fast-mode.md), [Sub-agents](https://code.claude.com/docs/en/sub-agents.md) |
+| Cursor | Routage automatique réel : le "Cursor Router" (classifieur "Compass") score chaque requête (0 à 1) sur sa complexité et choisit seul entre un modèle frontier ou économique | [Model routing](https://cursor.com/guides/model-routing) |
+| JetBrains Junie | Partiellement automatique : mode "auto-selection" + bascule automatique vers un modèle allégé (Claude Haiku / Gemini Flash) pour les tâches internes ; effort ajustable manuellement via `/effort` | [Model selection](https://junie.jetbrains.com/docs/junie-cli-model-selection.html) |
+| Google Antigravity | Manuel : sélection du modèle et du niveau d'effort (Low/Medium/High) via dropdown ou `/effort` — aucun routage automatique constaté dans la documentation | [Models](https://antigravity.google/docs/models/) |
+
+Conséquence pour le harnais : le principe reste dans `AGENTS.md` (portable, énoncé comme
+intention plutôt que comme mécanisme), mais les commandes concrètes (`/model`, `/effort`)
+n'y ont pas leur place — elles n'existent que côté Claude Code, et seraient même sans
+objet pour un utilisateur Cursor (déjà automatique chez eux).
+
 ### Étape 6 — Sécurité proportionnée
 
 Pas d'infrastructure de sandboxing façon cluster de calcul. Juste : secrets OAuth
