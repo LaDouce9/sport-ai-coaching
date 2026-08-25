@@ -306,6 +306,39 @@ vraies, pas seulement des mocks) a trouvé un bug que ni les tests unitaires ni 
 Mode initial n'avaient attrapé — les deux disciplines sont complémentaires, pas
 substituables l'une à l'autre.
 
+### 2026-08-25 — Audit de données + dashboard : le rendu réel comme discipline de vérification
+
+Deux tâches enchaînées sur les vraies données (271 activités) : audit descriptif
+(`notebooks/strava_data_audit.ipynb`) puis fonction de visualisation d'activité
+(`sport_coaching.metrics.activity_report`).
+
+**L'audit a de nouveau contredit une vérification pourtant faite sérieusement** : le
+Plan Mode du 25/08 avait confirmé par introspection que `average_heartrate`/
+`suffer_score`/`average_cadence` n'étaient PAS des champs du `SummaryActivity` de
+stravalib — exact au sens strict (`model_fields` ne les liste pas), mais le JSON brut
+réellement renvoyé par Strava les contient bien (champs "extra" que la lib laisse
+passer sans les déclarer). Les deux vérifications n'étaient pas contradictoires, mais
+l'introspection de bibliothèque et l'observation de données réelles répondent à des
+questions différentes — seule la seconde est vraiment probante sur "qu'est-ce que
+l'API renvoie". Schéma corrigé, colonnes ajoutées, backfill depuis `raw_json` déjà en
+base (pas de nouvel appel API nécessaire).
+
+**Le dashboard a révélé deux bugs qu'aucun test ni aucune relecture de code n'aurait
+attrapés — seul le fait de regarder l'image rendue les a montrés :**
+1. Cadence de course affichée deux fois trop faible (l'API Strava compte par jambe,
+   l'appli affiche le total) — vérifié après coup contre la communauté développeurs
+   Strava, corrigé avec un multiplicateur explicite et testé.
+2. Un arrêt réel pendant une sortie (feu rouge, pause) faisait exploser l'allure d'un
+   seul kilomètre à l'écran (~250 min/km), écrasant visuellement tous les autres
+   splits — invisible dans les données brutes ou un test unitaire construit à la main,
+   flagrant sur le graphique. Corrigé en excluant le temps non-`moving` du calcul.
+
+**Leçon pour le document final :** pour du code qui produit une sortie visuelle ou un
+résumé de données, "les tests passent" ne suffit pas à conclure que c'est correct —
+regarder le rendu final fait partie de la boucle de vérification, au même titre que
+les tests. Un test peut valider qu'une fonction ne plante pas sans jamais révéler
+qu'elle produit un résultat absurde.
+
 ### 2026-08-25 — Retour Gemini sur AGENTS.md : un LLM tiers reproduit le même biais
 
 Demande d'avis externe (Gemini) sur deux idées d'ajout à `AGENTS.md` : un persona
@@ -334,6 +367,7 @@ combler artificiellement.
 | 2 | Donnée non sourcée / fabriquée | Seuil "150-200 instructions" pour la taille d'un fichier de règles, repris tel quel par Gemini en conseil sur `AGENTS.md`, sans source citée | §3 — 25/08, "Retour Gemini sur AGENTS.md" | La vérification s'applique à toute source d'affirmation technique, y compris l'avis d'un LLM tiers sur notre propre méthodologie |
 | 3 | Absence de vérification avant affirmation technique | Schéma SQLite complet (colonnes, types) halluciné en Plan Mode pour l'ingestion Strava : mélange des objets `summary`/`detailed`, endpoint `/activities/{id}/streams` absent du plan | §3 — 25/08, "Schéma de données non vérifié en revue de plan" | Poser "comment sais-tu ça ?" sur toute affirmation de schéma/API/signature avant qu'elle soit figée — coût nul si posé en Plan Mode, avant la moindre ligne de code |
 | 4 | Complexification inutile d'une tâche (sur-ingénierie, robustesse non demandée) | Aucun cas observé à ce jour | — | Catégorie connue mais pas encore rencontrée dans ce projet — à surveiller notamment lors des tâches plus larges (étapes 3-4, TDD et Plan Mode répétés) |
+| 5 | Bug invisible aux tests, visible seulement au rendu réel | Cadence de course affichée 2x trop faible (unité API vs appli) ; un arrêt réel gonflant l'allure d'un split à ~250 min/km, écrasant tout le graphique | §3 — 25/08, "Audit de données + dashboard" | Pour du code produisant une sortie visuelle/un résumé, regarder le rendu final fait partie de la vérification — un test qui ne plante pas n'exclut pas un résultat absurde |
 
 *Table mise à jour à chaque nouvelle entrée de journal qui révèle une faille — pas
 seulement les incidents "négatifs" : une vérification qui a empêché une faille reste
