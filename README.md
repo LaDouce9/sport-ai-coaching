@@ -20,8 +20,15 @@ uv sync
    ```bash
    uv run python -m sport_coaching.ingestion.cli authorize
    ```
-   Ouvre une URL à autoriser dans le navigateur, puis demande de coller le `code` reçu
-   dans l'URL de redirection. Remplit `STRAVA_REFRESH_TOKEN` dans `.env`.
+   Ouvre une URL à autoriser dans le navigateur. Après autorisation, Strava redirige
+   vers `http://localhost` — **la page échoue à charger, c'est normal** (aucun serveur
+   n'écoute sur `localhost`, exprès, pour rester simple). Ce qui compte, c'est l'URL
+   dans la barre d'adresse à ce moment-là, du style :
+   ```
+   http://localhost/?state=&code=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX&scope=read,activity:read_all
+   ```
+   Copier uniquement la valeur entre `code=` et le `&` suivant, et la coller quand le
+   terminal la demande. Remplit `STRAVA_REFRESH_TOKEN` dans `.env`.
 4. Synchronisation des activités :
    ```bash
    uv run python -m sport_coaching.ingestion.cli sync           # incrémental
