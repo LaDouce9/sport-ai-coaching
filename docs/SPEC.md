@@ -10,7 +10,10 @@ cadrage. Document amendé à chaque divergence constatée en cours de route.
 zone corporelle, sans aucune logique de recommandation. Rien d'autre.
 
 **Dans le V1 :**
-1. Ingestion des activités **Strava** (OAuth2).
+1. Ingestion des activités **Strava** (OAuth2), y compris les **streams** (séries
+   temporelles : FC, allure, altitude, cadence...) via `/activities/{id}/streams` —
+   ajouté après la rédaction initiale de ce document, qui ne couvrait que les métriques
+   résumées par activité. Voir `METHODOLOGIE.md`, journal du 2026-08-25.
 2. Saisie manuelle de séances **"sans montre"** (durée, RPE global, RPE par zone
    corporelle).
 3. Calcul et restitution d'une **charge par zone corporelle**, combinant activités
@@ -47,6 +50,7 @@ initiale) : ne jamais confondre les unités suivantes lors de l'implémentation.
 | Type d'activité | tel que renvoyé par l'API Strava (`type`/`sport_type`) — la liste exacte des valeurs possibles (ex : présence ou non d'un type "Rugby") est à vérifier contre la documentation officielle au moment de l'implémentation, pas supposée ici | Strava API |
 | RPE (séance manuelle ou zone) | échelle 1–10 (Borg CR10) | Saisie utilisateur |
 | Charge par zone | voir formule section 3 — **pas d'unité physiologique établie, c'est un score relatif interne au projet, pas une mesure validée scientifiquement** | Calculée |
+| Streams (FC/allure/altitude/cadence dans le temps) | séries d'échantillons, unité propre à chaque type de stream (bpm, m/s, m...) | Strava API (`/activities/{id}/streams`), stockées brutes en V1, pas encore exploitées par un calcul |
 
 ## 3. Module "Sports sans Montre" & charge par zone corporelle
 

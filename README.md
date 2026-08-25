@@ -8,10 +8,25 @@ par IA. La démarche méthodologique compte plus que l'application elle-même �
 ## Setup
 
 ```bash
-python -m venv .venv
-source .venv/Scripts/activate   # Windows (git bash)
-pip install -r requirements.txt
+uv sync
 ```
+
+## Setup Strava
+
+1. Créer une app sur [strava.com/settings/api](https://www.strava.com/settings/api)
+   (Authorization Callback Domain : `localhost`).
+2. Copier `.env.example` en `.env`, renseigner `STRAVA_CLIENT_ID`/`STRAVA_CLIENT_SECRET`.
+3. Autorisation initiale (une fois) :
+   ```bash
+   uv run python -m sport_coaching.ingestion.cli authorize
+   ```
+   Ouvre une URL à autoriser dans le navigateur, puis demande de coller le `code` reçu
+   dans l'URL de redirection. Remplit `STRAVA_REFRESH_TOKEN` dans `.env`.
+4. Synchronisation des activités :
+   ```bash
+   uv run python -m sport_coaching.ingestion.cli sync           # incrémental
+   uv run python -m sport_coaching.ingestion.cli sync --full    # historique complet
+   ```
 
 ## Structure
 
@@ -21,12 +36,13 @@ src/sport_coaching/
 ├── parsing/     # fichiers FIT/TCX
 └── metrics/     # calculs physiologiques (VO2max, TSS, zones FC)
 notebooks/       # exploration
-tests/           # pytest
-data/            # exports locaux, non versionné
+tests/           # pytest (uv run pytest)
+data/            # exports locaux + sport_coaching.sqlite3, non versionné
 docs/            # SPEC.md, METHODOLOGIE.md
 ```
 
 ## État
 
-Configuration de base en place. Étape suivante : cadrage du besoin par Q&A avant
-rédaction de `docs/SPEC.md` (voir méthodologie, étape 0).
+Ingestion Strava (activités + streams) implémentée — voir `docs/SPEC.md` pour le
+périmètre V1 complet et sa Definition of Done. Prochaine étape : module de saisie
+manuelle "sports sans montre" et calcul de charge par zone corporelle.

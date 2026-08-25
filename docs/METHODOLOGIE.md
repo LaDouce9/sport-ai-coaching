@@ -163,6 +163,7 @@ de bord, pas présupposé.
 | Graphify + Agent Skills via MCP (prise en main) | Fiche initiale + demande explicite | Installé en avance sur l'étape 7 (voir journal) — vérifié réel via web (package `graphifyy`, PyPI + GitHub, non fabriqué contrairement à d'autres éléments de la fiche source) |
 | Journal de bord coût/bénéfice par pratique | Ajout | *à compléter* |
 | AGENTS.md canonique + CLAUDE.md en import (`@AGENTS.md`) | Demande explicite | Claude Code ne lit pas AGENTS.md nativement (vérifié) ; le symlink/import est le pattern officiellement supporté — repo compréhensible par n'importe quel agent sans rien casser côté Claude Code |
+| Règle explicite de non-présomption sur données externes (APIs Strava/Coros) dans AGENTS.md | Ajout, suite retour Gemini + incident réel | Ajoutée après un seul incident (schéma Strava halluciné, 25/08) au lieu des deux répétitions habituelles — dérogation assumée et documentée dans AGENTS.md, vu la gravité (pan fonctionnel manquant) ; *impact réel à confirmer au prochain Plan Mode touchant une API externe* |
 
 ### 2.2 Pratiques connues, non appliquées ici (bon à savoir)
 
@@ -226,3 +227,64 @@ plutôt que de tout spécifier. Bon test réel de l'étape 0 :
   le Q&A a changé la conception du module de charge (poids par défaut + surcharge
   manuelle plutôt que saisie manuelle pure) — exemple concret où le cadrage a amélioré
   la conception, pas juste réduit le scope.
+
+### 2026-08-25 — Schéma de données non vérifié en revue de plan
+
+Premier passage réel en Plan Mode (ingestion Strava). Le sous-agent de planification a
+produit un schéma SQLite complet (noms de colonnes, types) en le présentant avec
+assurance, sans jamais consulter la vraie documentation Strava — alors même que le
+`SPEC.md` demandait explicitement de vérifier ce point avant de le figer. L'utilisateur
+a posé la question directement ("comment sais-tu le schéma de données ?"), à trois
+reprises, avant que la vérification ne soit faite.
+
+**Ce qui a marché :** la question a été posée en revue de plan, donc avant qu'une seule
+ligne de code ne soit écrite — c'est précisément l'intérêt de la discipline Explore/Edit
+(étape 4) : le coût de l'erreur était encore nul. Vérification faite après coup :
+- L'objet "summary" (liste d'activités) et l'objet "detailed" (une activité) de l'API
+  Strava n'exposent pas les mêmes champs — le schéma halluciné mélangeait les deux sans
+  le savoir.
+- Un endpoint entier (`/activities/{id}/streams`, séries temporelles FC/allure/altitude)
+  était absent du plan — pas une erreur de détail, un pan fonctionnel manquant,
+  directement lié à un besoin produit réel exprimé dès le document de cadrage initial
+  (découplage aérobie, etc.) mais perdu en cours de route lors de la réduction du V1.
+- Cette même vérification a aussi fait revenir sur le choix de bibliothèque
+  (`requests` brut abandonné pour `stravalib`, maintenue et déjà correcte sur ce
+  schéma) : l'incident a servi d'argument concret dans un arbitrage qui semblait acquis.
+
+**Leçon pour le document final :** demander "comment sais-tu ça ?" sur une affirmation
+technique précise (schéma, nom de champ, signature de méthode) est une pratique de
+revue à elle seule, indépendante du Plan Mode — le Plan Mode crée juste le bon moment
+pour la poser à moindre coût.
+
+### 2026-08-25 — Retour Gemini sur AGENTS.md : un LLM tiers reproduit le même biais
+
+Demande d'avis externe (Gemini) sur deux idées d'ajout à `AGENTS.md` : un persona
+("tu es un expert...") et une règle de non-présomption sur les schémas d'API externes.
+Réponse de Gemini pertinente sur le fond (voir fiche §4), mais elle cite comme fait
+établi un seuil de "150 à 200 instructions" pour la taille d'un fichier de règles —
+exactement le même chiffre que ce document avait déjà flaggé comme non sourcé et
+vraisemblablement fabriqué en §2.2, sans que Gemini ne le sache. Confirmation en
+conditions réelles que la discipline "vérifier avant de croire" (cf. incident du
+25/08 ci-dessus) doit s'appliquer à l'avis d'un LLM tiers sur notre méthodologie,
+pas seulement au code produit par l'agent principal du projet.
+
+---
+
+## 4. Catalogue des failles rencontrées
+
+Vue transverse, organisée par catégorie plutôt que par date : chaque ligne renvoie à
+l'entrée complète du journal (§3) au lieu de répéter le récit. Une catégorie sans
+exemple reste listée tant qu'elle reste pertinente pour le projet, marquée comme telle
+plutôt que supprimée — l'absence de cas est une information utile, pas un vide à
+combler artificiellement.
+
+| # | Catégorie | Exemple concret | Référence | Leçon retenue |
+|---|---|---|---|---|
+| 1 | Donnée non sourcée / fabriquée | Chiffre de benchmark ("MAE de 22.7") sans unité ni source dans le document produit initial ayant servi de base à la fiche de pratiques | §2.2 — 24/08 | Ne jamais reprendre un chiffre sans savoir d'où il vient ; définir ses propres seuils empiriquement plutôt que d'hériter d'une valeur non vérifiable |
+| 2 | Donnée non sourcée / fabriquée | Seuil "150-200 instructions" pour la taille d'un fichier de règles, repris tel quel par Gemini en conseil sur `AGENTS.md`, sans source citée | §3 — 25/08, "Retour Gemini sur AGENTS.md" | La vérification s'applique à toute source d'affirmation technique, y compris l'avis d'un LLM tiers sur notre propre méthodologie |
+| 3 | Absence de vérification avant affirmation technique | Schéma SQLite complet (colonnes, types) halluciné en Plan Mode pour l'ingestion Strava : mélange des objets `summary`/`detailed`, endpoint `/activities/{id}/streams` absent du plan | §3 — 25/08, "Schéma de données non vérifié en revue de plan" | Poser "comment sais-tu ça ?" sur toute affirmation de schéma/API/signature avant qu'elle soit figée — coût nul si posé en Plan Mode, avant la moindre ligne de code |
+| 4 | Complexification inutile d'une tâche (sur-ingénierie, robustesse non demandée) | Aucun cas observé à ce jour | — | Catégorie connue mais pas encore rencontrée dans ce projet — à surveiller notamment lors des tâches plus larges (étapes 3-4, TDD et Plan Mode répétés) |
+
+*Table mise à jour à chaque nouvelle entrée de journal qui révèle une faille — pas
+seulement les incidents "négatifs" : une vérification qui a empêché une faille reste
+dans le journal (§3) mais n'entre ici que si la faille a réellement eu lieu.*
