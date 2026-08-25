@@ -1,6 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
+import pytest
 from stravalib.exc import ObjectNotFound
 from stravalib.model import Stream
 from stravalib.strava_model import ActivityType, SportType, SummaryActivity
@@ -87,7 +88,30 @@ def test_sync_uses_watermark_when_not_full(tmp_path):
     strava_sync.sync_activities(client, conn, full=False)
 
     called_after = client.get_activities.call_args.kwargs["after"]
-    assert called_after == datetime.fromisoformat("2026-01-01T00:00:00+00:00")
+    # Marge de sécurité de 1s soustraite au watermark (voir strava_sync.py).
+    assert called_after == datetime.fromisoformat("2026-01-01T00:00:00+00:00") - timedelta(
+        seconds=1
+    )
+
+
+def test_sync_rolls_back_entirely_on_error(tmp_path):
+    # Régression du bug identifié en revue de code (25/08) : sans transaction unique,
+    # une activité récente déjà committée aurait fait avancer le watermark au-delà
+    # d'activités plus anciennes jamais traitées, les rendant définitivement
+    # inaccessibles à un sync incrémental suivant.
+    conn = storage.connect(tmp_path / "test.sqlite3")
+    client = MagicMock()
+    client.get_activities.return_value = [
+        _summary_activity(2, datetime(2026, 1, 2, tzinfo=timezone.utc)),
+        _summary_activity(1, datetime(2026, 1, 1, tzinfo=timezone.utc)),
+    ]
+    client.get_activity_streams.side_effect = [{}, RuntimeError("network blip")]
+
+    with pytest.raises(RuntimeError):
+        strava_sync.sync_activities(client, conn, full=True)
+
+    rows = conn.execute("SELECT id FROM strava_activities").fetchall()
+    assert rows == []
 
 
 def test_sync_full_ignores_watermark(tmp_path):

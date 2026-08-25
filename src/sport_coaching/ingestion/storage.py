@@ -95,7 +95,9 @@ def upsert_activity(conn: sqlite3.Connection, activity: StravaActivity) -> None:
             _now(),
         ),
     )
-    conn.commit()
+    # Pas de commit ici : un sync entier doit être une seule transaction (voir
+    # strava_sync.sync_activities) pour que le watermark de reprise reste sûr en cas
+    # d'interruption partielle — cf. docs/METHODOLOGIE.md, revue de code du 25/08.
 
 
 def upsert_streams(conn: sqlite3.Connection, streams: list[StravaStream]) -> None:
@@ -110,7 +112,7 @@ def upsert_streams(conn: sqlite3.Connection, streams: list[StravaStream]) -> Non
         """,
         [(s.activity_id, s.stream_type, json.dumps(s.values), _now()) for s in streams],
     )
-    conn.commit()
+    # Pas de commit ici non plus, même raison.
 
 
 def get_last_sync_watermark(conn: sqlite3.Connection) -> str | None:

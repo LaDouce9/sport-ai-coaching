@@ -185,6 +185,7 @@ de bord, pas présupposé.
 | Journal de bord coût/bénéfice par pratique | Ajout | *à compléter* |
 | AGENTS.md canonique + CLAUDE.md en import (`@AGENTS.md`) | Demande explicite | Claude Code ne lit pas AGENTS.md nativement (vérifié) ; le symlink/import est le pattern officiellement supporté — repo compréhensible par n'importe quel agent sans rien casser côté Claude Code |
 | Règle explicite de non-présomption sur données externes (APIs Strava/Coros) dans AGENTS.md | Ajout, suite retour Gemini + incident réel | Ajoutée après un seul incident (schéma Strava halluciné, 25/08) au lieu des deux répétitions habituelles — dérogation assumée et documentée dans AGENTS.md, vu la gravité (pan fonctionnel manquant) ; *impact réel à confirmer au prochain Plan Mode touchant une API externe* |
+| Revue de code après un premier passage sur données réelles (skill `/code-review`) | Ajout | A trouvé un vrai bug de correction (watermark de reprise incrémentale) que ni les tests unitaires ni le Plan Mode initial n'avaient attrapé — complémentaire, pas redondant avec ces deux disciplines |
 
 ### 2.2 Pratiques connues, non appliquées ici (bon à savoir)
 
@@ -276,6 +277,34 @@ ligne de code ne soit écrite — c'est précisément l'intérêt de la discipli
 technique précise (schéma, nom de champ, signature de méthode) est une pratique de
 revue à elle seule, indépendante du Plan Mode — le Plan Mode crée juste le bon moment
 pour la poser à moindre coût.
+
+### 2026-08-25 — Revue de code post-implémentation (skill `/code-review`)
+
+Demandée après un premier sync réel réussi, sur `src/sport_coaching/ingestion` et
+`tests/ingestion`. 4 findings, dont un réel bug de correction (pas un style/nit) :
+le watermark de reprise incrémentale (`MAX(start_date)` en base) est recalculé après
+coup, mais `get_activities()` renvoie les activités du plus récent au plus ancien —
+si un sync est interrompu (rate limit, coupure réseau) après avoir committé
+seulement les toutes premières (les plus récentes), le prochain sync repart déjà du
+même watermark maximal et **ne récupère jamais les plus anciennes non traitées**,
+silencieusement.
+
+**Ce qui a marché :** le premier sync réel de l'utilisateur s'est déroulé sans
+interruption, donc ce bug précis n'a pas corrompu les données déjà en base — mais
+rien ne le garantissait, et un futur sync interrompu (quota Strava, coupure) l'aurait
+fait sans avertissement. Trouvé par une revue de code post-implémentation, avant que
+ça n'arrive, plutôt qu'en production.
+
+**Correction appliquée :** tout un `sync` devient une seule transaction SQLite
+(commit uniquement en fin de boucle, rollback complet sur exception) — un run
+interrompu redémarre proprement au même point plutôt que de faire avancer le
+watermark sur des données partielles. Un test de régression couvre explicitement ce
+scénario (`test_sync_rolls_back_entirely_on_error`).
+
+**Pour le document final :** une revue de code après un premier passage réel (données
+vraies, pas seulement des mocks) a trouvé un bug que ni les tests unitaires ni le Plan
+Mode initial n'avaient attrapé — les deux disciplines sont complémentaires, pas
+substituables l'une à l'autre.
 
 ### 2026-08-25 — Retour Gemini sur AGENTS.md : un LLM tiers reproduit le même biais
 
