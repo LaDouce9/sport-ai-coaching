@@ -48,8 +48,34 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+# Colonnes ajoutées après l'audit du 25/08 (notebooks/strava_data_audit.ipynb) : ces
+# champs sont réellement renvoyés par l'endpoint résumé Strava (observés dans raw_json)
+# bien qu'absents des model_fields déclarés de stravalib.SummaryActivity. Backfillées
+# depuis raw_json déjà en base, sans réappeler l'API Strava.
+_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("strava_average_heartrate", "REAL", "average_heartrate"),
+    ("strava_max_heartrate", "REAL", "max_heartrate"),
+    ("suffer_score", "REAL", "suffer_score"),
+    ("average_cadence", "REAL", "average_cadence"),
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    existing_columns = {row[1] for row in conn.execute("PRAGMA table_info(strava_activities)")}
+    for column, sql_type, raw_key in _MIGRATIONS:
+        if column in existing_columns:
+            continue
+        conn.execute(f"ALTER TABLE strava_activities ADD COLUMN {column} {sql_type}")
+        conn.execute(
+            f"UPDATE strava_activities SET {column} = json_extract(raw_json, ?) "
+            "WHERE raw_json IS NOT NULL",
+            (f"$.{raw_key}",),
+        )
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
 
 
@@ -58,13 +84,23 @@ def _now() -> str:
 
 
 def upsert_activity(conn: sqlite3.Connection, activity: StravaActivity) -> None:
+    # strava_average_heartrate/strava_max_heartrate/suffer_score/average_cadence sont
+    # extraits de raw_json via json_extract plutôt que portés par StravaActivity : ce
+    # sont des champs "extra" de l'API observés dans les données réelles (cf. audit du
+    # 25/08), pas des champs déclarés par stravalib — raw_json reste la source de
+    # vérité pour ce qui n'est pas explicitement modélisé.
     conn.execute(
         """
         INSERT INTO strava_activities (
             id, name, type, sport_type, distance_m, moving_time_s, elapsed_time_s,
             total_elevation_gain_m, average_heartrate, max_heartrate,
-            start_date, start_date_local, timezone, has_streams, raw_json, fetched_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            start_date, start_date_local, timezone, has_streams, raw_json, fetched_at,
+            strava_average_heartrate, strava_max_heartrate, suffer_score, average_cadence
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            json_extract(?, '$.average_heartrate'), json_extract(?, '$.max_heartrate'),
+            json_extract(?, '$.suffer_score'), json_extract(?, '$.average_cadence')
+        )
         ON CONFLICT(id) DO UPDATE SET
             name=excluded.name, type=excluded.type, sport_type=excluded.sport_type,
             distance_m=excluded.distance_m, moving_time_s=excluded.moving_time_s,
@@ -74,7 +110,10 @@ def upsert_activity(conn: sqlite3.Connection, activity: StravaActivity) -> None:
             max_heartrate=excluded.max_heartrate,
             start_date=excluded.start_date, start_date_local=excluded.start_date_local,
             timezone=excluded.timezone, has_streams=excluded.has_streams,
-            raw_json=excluded.raw_json, fetched_at=excluded.fetched_at
+            raw_json=excluded.raw_json, fetched_at=excluded.fetched_at,
+            strava_average_heartrate=excluded.strava_average_heartrate,
+            strava_max_heartrate=excluded.strava_max_heartrate,
+            suffer_score=excluded.suffer_score, average_cadence=excluded.average_cadence
         """,
         (
             activity.id,
@@ -93,6 +132,10 @@ def upsert_activity(conn: sqlite3.Connection, activity: StravaActivity) -> None:
             int(activity.has_streams),
             activity.raw_json,
             _now(),
+            activity.raw_json,
+            activity.raw_json,
+            activity.raw_json,
+            activity.raw_json,
         ),
     )
     # Pas de commit ici : un sync entier doit être une seule transaction (voir

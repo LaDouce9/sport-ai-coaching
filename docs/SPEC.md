@@ -45,12 +45,15 @@ initiale) : ne jamais confondre les unités suivantes lors de l'implémentation.
 |---|---|---|
 | Distance | mètres | Strava API |
 | Durée | secondes — **`moving_time` et `elapsed_time` sont distincts dans l'API Strava**, choix à documenter explicitement au moment de l'implémentation | Strava API |
-| Fréquence cardiaque | bpm | Strava API (`average_heartrate`, `max_heartrate`), quand le capteur était présent |
+| Fréquence cardiaque (calculée) | bpm | Colonnes `average_heartrate`/`max_heartrate`, calculées depuis le stream `heartrate`, pas depuis le résumé d'activité |
+| Fréquence cardiaque (Strava) | bpm | Colonnes `strava_average_heartrate`/`strava_max_heartrate` — champ résumé natif Strava. **Diverge parfois de la version calculée** (jusqu'à ~18 bpm observé, cf. audit du 25/08, `notebooks/strava_data_audit.ipynb`) — vraisemblablement parce que le calcul par stream n'exclut pas les phases à l'arrêt (stream `moving`), contrairement au résumé Strava. Non corrigé, à trancher avant de bâtir le calcul de charge dessus. |
+| Effort perçu (Strava) | score sans unité | Colonne `suffer_score` — "Relative Effort" Strava, modèle TRIMP pondéré par zones FC, **formule exacte propriétaire non publiée** |
+| Cadence moyenne | tr/min | Colonne `average_cadence` |
 | Dénivelé positif | mètres | Strava API (`total_elevation_gain`) |
-| Type d'activité | tel que renvoyé par l'API Strava (`type`/`sport_type`) — la liste exacte des valeurs possibles (ex : présence ou non d'un type "Rugby") est à vérifier contre la documentation officielle au moment de l'implémentation, pas supposée ici | Strava API |
+| Type d'activité | tel que renvoyé par l'API Strava (`type`/`sport_type`) — confirmé par les données réelles : pas de type "Rugby" natif, ces séances passent par le module de saisie manuelle | Strava API |
 | RPE (séance manuelle ou zone) | échelle 1–10 (Borg CR10) | Saisie utilisateur |
 | Charge par zone | voir formule section 3 — **pas d'unité physiologique établie, c'est un score relatif interne au projet, pas une mesure validée scientifiquement** | Calculée |
-| Streams (FC/allure/altitude/cadence dans le temps) | séries d'échantillons, unité propre à chaque type de stream (bpm, m/s, m...) | Strava API (`/activities/{id}/streams`), stockées brutes en V1, pas encore exploitées par un calcul |
+| Streams (FC/allure/altitude/cadence dans le temps) | séries d'échantillons, unité propre à chaque type de stream (bpm, m/s, m...) | Strava API (`/activities/{id}/streams`), stockées brutes en V1, pas encore exploitées par un calcul. Couverture réelle observée : quasi systématique pour vitesse/temps/altitude, ~28% seulement pour la FC (dépend du port d'un capteur) |
 
 ## 3. Module "Sports sans Montre" & charge par zone corporelle
 

@@ -73,3 +73,30 @@ def test_watermark_returns_max_start_date(tmp_path):
     storage.upsert_activity(conn, _activity(id=1, start_date="2026-01-01T10:00:00+00:00"))
     storage.upsert_activity(conn, _activity(id=2, start_date="2026-02-01T10:00:00+00:00"))
     assert storage.get_last_sync_watermark(conn) == "2026-02-01T10:00:00+00:00"
+
+
+def test_upsert_extracts_extra_fields_from_raw_json(tmp_path):
+    conn = storage.connect(tmp_path / "test.sqlite3")
+    storage.init_db(conn)
+
+    raw = (
+        '{"average_heartrate": 145.2, "max_heartrate": 178, '
+        '"suffer_score": 62, "average_cadence": 88.5}'
+    )
+    storage.upsert_activity(conn, _activity(raw_json=raw))
+
+    row = conn.execute(
+        "SELECT strava_average_heartrate, strava_max_heartrate, suffer_score, average_cadence "
+        "FROM strava_activities WHERE id = 1"
+    ).fetchone()
+    assert row == (145.2, 178.0, 62.0, 88.5)
+
+
+def test_init_db_migration_is_idempotent(tmp_path):
+    conn = storage.connect(tmp_path / "test.sqlite3")
+    storage.init_db(conn)
+    storage.upsert_activity(conn, _activity(raw_json='{"suffer_score": 10}'))
+    storage.init_db(conn)  # ne doit pas lever d'erreur sur les colonnes déjà ajoutées
+
+    row = conn.execute("SELECT suffer_score FROM strava_activities WHERE id = 1").fetchone()
+    assert row == (10.0,)
