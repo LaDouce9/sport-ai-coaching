@@ -18,3 +18,6 @@ dist/
 data/*
 !data/.gitkeep
 *.sqlite3
+
+# Exports de documentation (docx/pdf générés depuis docs/METHODOLOGIE.md)
+docs/export/

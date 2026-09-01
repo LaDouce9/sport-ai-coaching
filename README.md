@@ -35,21 +35,35 @@ uv sync
    uv run python -m sport_coaching.ingestion.cli sync --full    # historique complet
    ```
 
+## Visualiser les activités
+
+```bash
+uv run streamlit run src/sport_coaching/app/streamlit_app.py
+```
+
+Nécessite une synchronisation Strava préalable (voir ci-dessus) — la page prévient si
+`data/sport_coaching.sqlite3` est absent. Aucun secret Strava requis pour cette
+commande : lecture seule de la base déjà synchronisée.
+
 ## Structure
 
 ```
 src/sport_coaching/
 ├── ingestion/   # clients API Strava/Coros
 ├── parsing/     # fichiers FIT/TCX
-└── metrics/     # calculs physiologiques (VO2max, TSS, zones FC)
+├── metrics/     # calculs physiologiques (VO2max, TSS, zones FC)
+└── app/         # interface Streamlit (visualisation)
 notebooks/       # exploration
 tests/           # pytest (uv run pytest)
 data/            # exports locaux + sport_coaching.sqlite3, non versionné
-docs/            # SPEC.md, METHODOLOGIE.md
+docs/            # METHODOLOGIE.md, JOURNAL.md
+specs/           # spec.md/plan.md par feature (001-ingestion-strava-v1/, ...)
 ```
 
 ## État
 
-Ingestion Strava (activités + streams) implémentée — voir `docs/SPEC.md` pour le
-périmètre V1 complet et sa Definition of Done. Prochaine étape : module de saisie
-manuelle "sports sans montre" et calcul de charge par zone corporelle.
+Ingestion Strava (activités + streams) implémentée — voir
+`specs/001-ingestion-strava-v1/spec.md` pour le périmètre V1 complet et sa Definition
+of Done. Premier jet de visualisation des activités livré (Streamlit, voir
+`specs/002-visualisation-activites-streamlit/spec.md`). Prochaine étape : module de
+saisie manuelle "sports sans montre" et calcul de charge par zone corporelle.

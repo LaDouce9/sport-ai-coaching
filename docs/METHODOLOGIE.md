@@ -1,374 +1,878 @@
-# Méthodologie de Vibe Engineering — Projet Coaching Sportif (Strava/Coros)
+# Bonnes pratiques — développement assisté par IA
 
-> Document vivant. Objectif final : une méthodologie éprouvée par la pratique, pas une
-> liste théorique. Chaque pratique appliquée doit être confrontée au réel dans ce projet
-> avant d'être jugée bonne ou mauvaise.
+**« Vibe engineering »** : une méthodologie éprouvée par la pratique, générale et
+transférable. Générer vite avec l'IA, vérifier avec la rigueur d'ingénierie avant de
+livrer.
+
+`Agent de référence : Junie` · `Document vivant` · `Socle des supports de formation`
+
+> **STATUT DU DOCUMENT**
 >
-> Priorité explicite du projet : **comprendre la méthode et les concepts**, pas produire
-> l'application la plus rapide/sécurisée/scalable. La stack technique sera choisie pour
-> sa simplicité, pas pour sa robustesse en production.
+> Document de référence personnel et vivant. Il n'est pas destiné à être distribué tel
+> quel aux équipes : il sert de socle de connaissance pour produire ensuite des
+> supports de formation ciblés. On y garde volontairement la profondeur, les nuances et
+> les hypothèses non tranchées — à condition qu'elles soient balisées (voir
+> conventions).
+
+## Note de lecture & conventions
+
+**Cadre général d'abord.** Le corps du document décrit ce qui fonctionne quel que soit
+l'agent de codage. Les spécificités d'un outil (commande, fichier, mécanisme
+propriétaire) sont isolées dans des encarts, jamais fondues dans le texte.
+
+**Agent de référence : Junie (JetBrains)** — l'agent que les équipes utiliseront. Les
+mécanismes propres à d'autres outils (notamment Claude Code) sont signalés comme tels,
+pour ne pas les prendre pour des pratiques universelles. Les exemples de code sont en
+Python par lisibilité ; tout se transpose à PHP.
+
+**Deux mots de vocabulaire :** un **artefact** est un fichier durable produit et
+réutilisé dans le flux (spec, plan, `AGENTS.md`, tests, doc) ; `AGENTS.md` désigne le
+fichier de directives du projet (§1.1), un standard réellement lu par plusieurs agents.
+
+**Les encarts, utilisés partout :**
+
+> **▶ CÔTÉ JUNIE**
+>
+> Comment la pratique se décline avec l'agent de référence.
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> Mécanisme propre à Claude Code — à transposer, pas à recopier.
+
+> **⚠ À VÉRIFIER / RÉSERVE**
+>
+> Affirmation plausible mais non confirmée, ou détail qui a pu évoluer.
+
+> **🔒 SÉCURITÉ**
+>
+> Point de vigilance sécurité ou confidentialité.
+
+> **📎 Ancrage projet (sport-coaching-ai)**
+>
+> Le journal de bord de ce projet (incidents datés, fiche des pratiques
+> appliquées/écartées) vit séparément dans [`docs/JOURNAL.md`](JOURNAL.md), pas dans ce
+> document — cf. §0 : « une pratique observée qui ne généralise pas en bonne pratique
+> reste dans le journal du projet, pas ici ».
 
 ---
 
-## 0. Bien prompter : la méta-pratique transversale
+# PARTIE 0 — Cadre et principes
 
-Toutes les étapes ci-dessous reposent sur des allers-retours avec un LLM. La qualité de
-ces échanges conditionne tout le reste — c'est la pratique la plus transversale et la plus
-facile à négliger.
+## 0.1 — « Vibe coding » vs développement assisté
 
-**Principes à appliquer tout au long du projet :**
+Le « vibe coding », c'est décrire son intention en langage naturel et laisser l'IA
+générer le code. La nuance qui change tout : *si vous relisez, testez et savez
+expliquer le code produit, ce n'est plus du « vibe coding », c'est du développement
+assisté*. L'IA tape vite ; l'ingénieur reste responsable de l'intention et de la
+vérification.
 
-- **Contexte avant tâche.** Dire *pourquoi* avant *quoi*. "On ajoute un parseur FIT parce
-  que Coros exporte dans ce format et qu'on n'a pas encore de calcul de charge fiable"
-  guide mieux que "ajoute un parseur FIT".
-- **Expliciter les non-objectifs.** Dire ce qu'on ne veut PAS est aussi utile que dire ce
-  qu'on veut : "pas besoin de gérer le multi-athlète", "pas besoin d'authentification
-  robuste ici".
-- **Un niveau de granularité à la fois.** Ne pas mélanger une question de cadrage
-  ("est-ce qu'on stocke les FC brutes ou juste les zones ?") avec une demande d'implémentation
-  dans le même message — ça pousse le modèle à trancher des choix de conception en
-  passant, sans que ce soit visible.
-- **Séparer explicitement lecture et écriture.** "Explique-moi comment X est calculé"
-  vs "modifie X pour qu'il fasse Y" ne doivent jamais être ambigus dans la formulation.
-- **Donner le critère de succès.** Une demande sans "definition of done" laisse le
-  modèle deviner quand s'arrêter — première cause de sur-ingénierie ou de sous-livraison.
-- **Corriger tout de suite, pas trois tours plus tard.** Si une réponse part dans la
-  mauvaise direction, le signal est plus utile immédiatement qu'après plusieurs messages
-  qui accumulent l'erreur.
-- **Préférer une question ciblée à une question fourre-tout** en phase de cadrage
-  ("cadrage" = ambigu, mieux vaut itérer petit), mais **grouper les demandes indépendantes**
-  une fois le cadrage posé (pas besoin de dix allers-retours pour dix tâches non liées).
-- **Éviter le vague évaluatif** ("améliore ça", "fais que ce soit propre") : préciser la
-  dimension visée (lisibilité, perf, sécurité, cohérence avec le style existant).
-- **Donner explicitement le périmètre** ("ne touche pas au parseur Strava", "reste dans
-  `src/coros/`") quand une tâche pourrait déborder.
+La règle d'or tient en deux mots : **« Vibe & Verify »**. Générer vite avec l'IA,
+vérifier avec la rigueur d'ingénierie (revue, tests, analyse statique) avant de livrer.
+Le cycle de base : **décrire l'intention → l'IA génère → vérifier & itérer** (lire le
+diff, tester, corriger, recommencer).
 
-Cette section sera enrichie avec des exemples concrets tirés du projet au fil de l'eau
-(bons et mauvais prompts observés).
+## 0.2 — Pourquoi un cadre est nécessaire
+
+La vitesse est réelle, mais sans garde-fous elle se paie en dette technique et en
+failles de sécurité : une part significative du code généré sans vérification contient
+des vulnérabilités, et la sur-confiance (« Accept All » sans relire) augmente le taux
+de défauts — sur les tâches complexes, des développeurs expérimentés peuvent même
+*perdre* du temps s'ils délèguent sans méthode.
+
+> **⚠ À VÉRIFIER / RÉSERVE**
+>
+> Les chiffres précis qui circulent (pourcentages de vulnérabilités, gains/pertes de
+> vitesse) viennent de sources hétérogènes et datées. À resourcer avant de les citer.
+> Le *sens* (vitesse réelle mais dette/sécurité sans vérification) est solide ; les
+> nombres exacts, non.
+
+À retenir : la bonne pratique est hybride — l'IA pour générer vite, l'ingénierie
+(revue, tests, sécurité) pour livrer sûr.
+
+## 0.3 — Le modèle des 4 cadences
+
+Plutôt qu'une suite d'étapes numérotées, on raisonne par **cadence** — à quelle
+fréquence et à quelle portée chaque pratique intervient. Une bonne partie n'est **pas**
+séquentielle.
+
+| Cadence | Fréquence / portée | Ce qu'on y trouve | Partie |
+|---|---|---|---|
+| Socle projet | Une fois par projet, évolue lentement | `AGENTS.md`, spec, skills, permissions, arborescence | 1 |
+| Boucle par feature | Répétée à chaque unité de travail | Cadrage → spec → plan → implémentation → revue | 2 |
+| Disciplines transversales | Toujours actives | Bien prompter, hygiène tokens, pilotage de l'effort, sécurité | 3–5, A |
+| Passage à l'échelle | Quand la pratique est mûre | Parallélisation (worktrees) | 6 |
+
+« Faut-il faire le spec avant `AGENTS.md` ? » est un faux problème de séquence.
+`AGENTS.md` est un artefact *projet* persistant qui préexiste au travail ; le spec est
+*par feature*, recréé à chaque cycle. L'ordre réel : **un `AGENTS.md` minimal d'abord,
+puis pour chaque feature un spec**, `AGENTS.md` se densifiant au fil des corrections.
+Le seul vrai séquencement du document est la **boucle par feature** (Partie 2).
 
 ---
 
-## 1. Méthodologie étape par étape
+# PARTIE 1 — Le socle projet (les artefacts de contexte)
 
-L'ordre proposé suit une logique de dépendances : chaque étape s'appuie sur un artefact
-produit par la précédente.
+Le socle donne à l'agent le *contexte stable* du projet. On le pose tôt, en version
+minimale, et on le laisse grandir par sédimentation. Principe : **on ne pré-écrit pas
+toutes les règles hypothétiques ; on ajoute ce que l'expérience a montré nécessaire.**
 
-### Étape 0 — Cadrage par Q&A avec le LLM
+> **📎 VOCABULAIRE**
+>
+> Le fichier de directives central est appelé fichier de directives, harnais,
+> constitution, guidelines… Ici on l'appelle `AGENTS.md`. On réserve le mot « socle »
+> (ou « harnais ») à l'*ensemble* de la couche de contexte — `AGENTS.md` + docs
+> référencées + skills/règles + permissions.
 
-Avant d'écrire le moindre `SPEC.md`, on ne part pas d'une spec déjà figée dans notre
-tête : on fait rédiger une première version du besoin, puis on demande explicitement au
-LLM de **poser des questions de clarification** avant de proposer un contrat fonctionnel.
+## 1.1 — `AGENTS.md` : la « constitution » du projet
 
-Pourquoi cet ordre et pas l'inverse (nous écrivons la spec seuls) : un humain qui rédige
-seul a tendance à laisser des angles morts implicites ("évidemment on garde l'historique
-complet") que le LLM ne peut pas deviner. Le forcer à interroger fait remonter ces angles
-morts avant qu'ils ne coûtent des itérations de code.
+Le fichier que l'agent lit en priorité : description, stack, gestionnaire de paquets,
+commandes de test/lint, conventions, interdits. C'est un **standard de fichier ouvert,
+lu par plusieurs agents**.
 
-Déroulé concret :
-1. On donne un besoin en une ou deux phrases (ex : "appli qui croise Strava et Coros pour
-   proposer un feedback de charge d'entraînement").
-2. On demande explicitement : *"Avant de rédiger le SPEC.md, pose-moi toutes les
-   questions nécessaires pour lever les ambiguïtés."*
-3. On répond, on itère jusqu'à ce que le LLM n'ait plus de question bloquante.
-4. Seulement à ce stade, rédaction du `SPEC.md`.
-
-### Étape 1 — Rédaction du SPEC.md
-
-Contrat fonctionnel, pas technique : ce que le système fait, les types de données
-manipulés (et leurs unités — watts vs watts/kg, allure vs vitesse), les cas limites
-connus, ce qui est explicitement hors scope. Le `SPEC.md` est relu et amendé à chaque
-divergence constatée en cours de route (pas figé une fois pour toutes).
-
-### Étape 2 — Constitution du Harness (CLAUDE.md)
-
-Contrairement à une approche "on écrit toutes les conventions d'un coup avant de coder",
-on constitue le harness **progressivement** :
-- Un `CLAUDE.md` minimal dès le départ (description du projet, gestionnaire de paquets,
-  commande de test/lint) — pas une liste exhaustive de règles hypothétiques.
-- Une règle n'est ajoutée au harness qu'après avoir été **répétée deux fois** en
-  correction manuelle (signal que ce n'est pas un cas isolé).
-- Les règles trop spécifiques à un sous-domaine (ex : conventions de parsing FIT)
-  partent dans un fichier dédié (`docs/PARSING.md`) référencé depuis `CLAUDE.md`, plutôt
-  que de tout centraliser — cf. divulgation progressive.
-
-### Étape 3 — TDD augmenté par l'IA sur les modules critiques
-
-Test-first uniquement là où une erreur silencieuse coûterait cher à détecter : calculs
-physiologiques (zones FC, charge d'entraînement, VO2max), parsing de formats externes
-(FIT/TCX). Pas de dogmatisme TDD sur le reste (UI, plomberie) — l'objectif ici est
-d'observer où le test-first apporte réellement de la valeur, pas de l'appliquer partout
-par principe.
-
-### Étape 4 — Discipline Explore/Edit (Plan Mode)
-
-Toute tâche touchant plusieurs fichiers passe par une phase d'exploration en lecture
-seule (Plan Mode) avant l'édition. Toute tâche mono-fichier bien définie peut s'en
-passer — l'objectif est d'observer le point de bascule où le plan devient rentable.
-
-Ce n'est pas une bascule manuelle entre deux conversations séparées : c'est un mode qui
-change d'état **au sein de la même conversation**, initié à l'origine par l'agent
-lui-même sur les tâches non triviales — pas seulement sur demande explicite de
-l'utilisateur.
-
-**Comparaison écosystème :**
-
-| Outil | Mécanisme | Source |
+| Outil | Fichier de directives | Portée |
 |---|---|---|
-| Claude Code | Plan Mode : bascule dans la même conversation (lecture seule → plan → validation → édition) | Comportement observé dans ce projet |
-| JetBrains Junie | Plan Mode natif (`Shift+Tab`, `/plan`, `Ctrl+P` pour la vue dédiée) ; séparation *Ask Mode* (planifier/discuter, aucune édition) / *Code Mode* (agent complet, édite et teste) | [Junie — Plan mode](https://junie.jetbrains.com/docs/junie-cli-plan-mode.html), [Junie — Ask vs Code mode](https://youtrack.jetbrains.com/articles/SUPPORT-A-1832/What-is-the-difference-between-ask-and-code-modes-in-Junie) |
-| Cursor | Pas de bascule native — pratique communautaire : explorer dans un thread, puis ouvrir un **nouveau** thread vierge nourri uniquement du plan/spec, pour repartir sur un contexte propre | Pratique d'usage rapportée, non une spec produit |
-| Google Antigravity | Fichiers de règles `.agents/rules` (projet, valeur par défaut) ou `~/.gemini/AGENTS.md` (global) ; `GEMINI.md` prioritaire sur `AGENTS.md` en cas de conflit ; limite de 12 000 caractères par fichier | [Antigravity — Rules](https://antigravity.google/docs/rules-workflows/) |
+| Junie | `.junie/AGENTS.md` ou `AGENTS.md` racine ; `.junie/guidelines.md` = legacy | Projet + `~/.junie/AGENTS.md` global |
+| Claude Code | `CLAUDE.md` (importe `AGENTS.md` via `@AGENTS.md`) | Projet + global `~/.claude/` |
+| Standard | `AGENTS.md` | Projet — lisible par de nombreux agents |
 
-### Étape 5 — Routage par niveau d'effort selon la tâche
+> **▶ CÔTÉ JUNIE**
+>
+> Junie lit `AGENTS.md` nativement. Emplacement primaire `.junie/AGENTS.md`, mais un
+> `AGENTS.md` racine fonctionne aussi (combiné le cas échéant à `.junie/playbook.md`
+> et aux règles `.junie/rules/*.md`). Le format `.junie/guidelines.md` est *legacy*.
+> Il existe un `~/.junie/AGENTS.md` global.
 
-Pas de "modèle Driver/Executor" façon Spark, mais une règle pragmatique : les tâches de
-raisonnement (choix d'architecture, cadrage) méritent un effort de réflexion plus élevé
-que les tâches mécaniques (renommage, nettoyage). À observer concrètement plutôt qu'à
-théoriser à l'avance.
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> Claude Code lit `CLAUDE.md` et ne lit pas `AGENTS.md` par défaut ; le pattern est de
+> garder un `AGENTS.md` canonique et de l'importer depuis `CLAUDE.md` (`@AGENTS.md`) —
+> le repo reste compréhensible par n'importe quel agent.
 
-Vérifié le 25/08 (voir journal) : Claude Code ne fait **aucun routage automatique** par
-complexité de tâche — le principe ci-dessus est donc une discipline manuelle à appliquer
-soi-même, pas un comportement natif de l'outil. Seule nuance : quand l'agent principal
-délègue à un subagent (tool Agent), il peut choisir explicitement un modèle différent
-pour ce subagent — décision de l'IA au moment de l'orchestration, mais toujours
-explicite/paramétrée, pas un routage caché du système.
+Deux règles de discipline : (1) **commencer minimal** (contexte, commandes, 2–3
+conventions clés) ; (2) **ajouter une règle seulement après répétition** — quand on a
+dû corriger la même chose deux fois (exception : un incident grave justifie une règle
+dès la première fois).
 
-**Comparaison écosystème :**
+```
+# AGENTS.md — MaListe
+## Contexte
+Appli web de listes de tâches. Python (FastAPI) + SQLite. Une seule page, pas de comptes.
+## Commandes
+Lancer : make dev · Tests : make test · Lint : make lint
+## Règles
+Dates : toujours en ISO 8601, jamais de format local en base.
+Un test par nouvelle fonction dans src/services/.
+## Ne pas faire
+Ne pas ajouter de librairie sans demander.
+Ne pas toucher à src/legacy/ (gelé).
+```
 
-| Outil | Mécanisme | Source |
+**Divulgation progressive.** Une règle trop spécifique à un sous-domaine ne va **pas**
+dans `AGENTS.md` : elle part dans un fichier dédié (`docs/PARSING.md`) référencé depuis
+`AGENTS.md`.
+
+> **▶ CÔTÉ JUNIE**
+>
+> La divulgation progressive se fait en éclatant les règles dans plusieurs
+> `.junie/rules/*.md` (il n'y a **pas** de syntaxe d'import `@fichier` comme chez
+> Claude Code).
+
+> **⚠ UN DOC RÉFÉRENCÉ N'EST PAS UN « SKILL »**
+>
+> Même objectif (ne pas tout charger), déclenchement différent : un doc référencé est
+> chargé parce qu'un fichier le *pointe* ; un skill (§1.3) est chargé parce que l'agent
+> *décide* de le charger d'après sa `description`. Le doc référencé = divulgation
+> progressive *manuelle* ; le skill = version *automatique*.
+
+## 1.2 — Le spec : contrat fonctionnel d'une unité de travail
+
+Un spec décrit **ce que** le système doit faire pour *une* feature : comportement,
+données et unités, cas limites, et ce qui est **hors scope**. Jamais le détail
+d'implémentation — celui-ci relève d'un *plan* séparé (le *comment*).
+
+**Trois principes** (spec-driven ; outillage de référence : *spec-kit*, Annexe C) :
+
+1. **Un spec par feature**, pas un spec unique pour tout le produit (sinon il perd
+   l'avantage : rester assez léger pour tenir dans le contexte).
+2. **Séparer le spec (le quoi) du plan (le comment)** — deux artefacts, deux
+   granularités.
+3. **Un dossier numéroté par feature** (`specs/<N>-<nom-feature>/spec.md`). Le travail
+   en cours vit dans le dossier le plus récent ; les specs terminées restent
+   archivées, pas supprimées.
+
+```
+# spec — Export CSV des congés d'un collaborateur
+## Objectif
+Exposer un endpoint qui exporte les congés d'un collaborateur au format CSV.
+## Comportement
+GET /exports/conges/{id} → CSV (UTF-8, séparateur ';'), colonnes : date, type, statut.
+Droits : le collaborateur concerné + le rôle RH. Pagination : 1000 lignes max.
+## Cas limites
+- Droits refusés → 403. - Aucun congé → CSV en-têtes seules. - Caractères spéciaux échappés.
+## Hors scope
+Pas d'export multi-collaborateurs. Pas de format Excel natif.
+```
+
+> **💡 IDÉE : UN SKILL « RÉDACTION DE SPEC »**
+>
+> Le gabarit de spec de l'équipe est un candidat idéal à un skill (§1.3). Encore
+> mieux : un skill « spec en inspecteur » qui *challenge* les hypothèses et pose des
+> questions avant de rédiger (prolongement du cadrage Q&A, §2.1).
+
+## 1.3 — Les connaissances réutilisables (Agent Skills)
+
+Un **Skill** encapsule une connaissance/convention réutilisable que l'agent charge *à
+la demande*. Mécanisme : un `SKILL.md` (en-tête `name` + `description`, puis corps).
+**Seuls `name` et `description` sont chargés en permanence** ; le corps est chargé si
+l'agent juge la tâche pertinente. La `description` joue un rôle de **règle de
+routage** — d'où l'importance de la soigner.
+
+**Un skill est un dossier, pas qu'un fichier.** Autour du `SKILL.md`, il peut embarquer
+des **fichiers de référence** (chargés à la demande), des **scripts exécutables** et
+des **gabarits / checklists** — le `SKILL.md` les pointe, et l'agent ne les lit (ou ne
+les exécute) que si la tâche le justifie. C'est une seconde divulgation progressive, à
+l'intérieur du skill : le `SKILL.md` reste léger, une doc massive ne coûte des tokens
+que quand elle sert.
+
+```
+skills/mon-skill/
+├─ SKILL.md      # obligatoire — name + description + corps (qui pointe les fichiers)
+├─ scripts/      # helpers exécutables (ex. check.sh), lancés par l'agent
+├─ templates/    # gabarits / assets
+└─ checklists/   # matière de référence chargée au besoin (ex. review.md)
+```
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> « Agent Skills » (`SKILL.md`, dossiers `~/.claude/skills/` ou `.claude/skills/`). Un
+> Skill est **indépendant de MCP** : aucun serveur requis.
+
+> **▶ CÔTÉ JUNIE**
+>
+> Structure identique, confirmée en plugin ET en CLI (doc officielle JetBrains). Un
+> skill est un dossier `.junie/skills/<nom>/` avec `SKILL.md` obligatoire, plus
+> `scripts/` (que Junie **exécute**), `templates/` et `checklists/`. Divulgation
+> progressive native : seuls `name` et `description` sont connus tant que la tâche ne
+> rend pas le skill pertinent. Côté CLI, `skill-locations` ajoute des emplacements et
+> les fonctions avancées (`/skills`, `$nom`) sont surtout CLI.
+
+> **🔒 SÉCURITÉ**
+>
+> Un skill qui embarque un script s'exécute avec les droits de l'agent → il repasse
+> par les permissions / l'Action Allowlist (§5.1). Un skill avec script est donc du
+> **code exécutable** : à traiter comme une dépendance (source de confiance, revue).
+
+**Cartographie des typologies de skills :**
+
+| Typologie | But | Exemples |
 |---|---|---|
-| Claude Code | Aucun routage automatique par complexité — choix du modèle (`/model`, `--model`, `settings.json`) et de l'effort (`/effort`, `--effort`) toujours explicites ; `/fast` est un toggle manuel (bascule vers Opus) | [Model config](https://code.claude.com/docs/en/model-config.md), [Fast mode](https://code.claude.com/docs/en/fast-mode.md), [Sub-agents](https://code.claude.com/docs/en/sub-agents.md) |
-| Cursor | Routage automatique réel : le "Cursor Router" (classifieur "Compass") score chaque requête (0 à 1) sur sa complexité et choisit seul entre un modèle frontier ou économique | [Model routing](https://cursor.com/guides/model-routing) |
-| JetBrains Junie | Partiellement automatique : mode "auto-selection" + bascule automatique vers un modèle allégé (Claude Haiku / Gemini Flash) pour les tâches internes ; effort ajustable manuellement via `/effort` | [Model selection](https://junie.jetbrains.com/docs/junie-cli-model-selection.html) |
-| Google Antigravity | Manuel : sélection du modèle et du niveau d'effort (Low/Medium/High) via dropdown ou `/effort` — aucun routage automatique constaté dans la documentation | [Models](https://antigravity.google/docs/models/) |
+| Production de code | Uniformiser le code écrit | modularité + docstrings ; style/lint maison ; gestion d'erreurs |
+| Artefacts de process | Standardiser les livrables | spec « en inspecteur » ; plan ; découpage en tâches |
+| Qualité & tests | Fiabiliser | plan de tests piloté par la couverture ; TDD ; correction de tests |
+| Revue & sécurité | Filet de sortie | revue de code ; revue sécurité/RGPD ; anti-patterns |
+| Documentation | Expliquer / tracer | doc de module ; docstrings ; changelog |
+| Git & livraison | Discipliner la livraison | message de commit ; titre/description de PR ; branches |
+| Domaine métier | Encapsuler le métier | règles métier ; databook ; glossaire |
+| Brownfield | Rendre l'implicite explicite | extraction de conventions ; caractérisation ; carte de dépendances |
 
-Conséquence pour le harnais : le principe reste dans `AGENTS.md` (portable, énoncé comme
-intention plutôt que comme mécanisme), mais les commandes concrètes (`/model`, `/effort`)
-n'y ont pas leur place — elles n'existent que côté Claude Code, et seraient même sans
-objet pour un utilisateur Cursor (déjà automatique chez eux).
+## 1.4 — Récapitulatif du socle
 
-### Étape 6 — Sécurité proportionnée
-
-Pas d'infrastructure de sandboxing façon cluster de calcul. Juste : secrets OAuth
-Strava/Coros dans `.env` non commité, jamais lus ni affichés par l'agent, permissions
-Claude Code configurées pour refuser explicitement l'accès à `.env`.
-
-### Étape 7 — Outils de context engineering (expérimentation encadrée)
-
-C'est ici qu'on teste **Graphify** et des **Agent Skills via MCP** pour les calculs
-répétitifs (VO2max, seuils, lissage HRV) — en prise en main volontaire, avec un objectif
-explicite : voir si ça change réellement la qualité des réponses de l'IA sur ce projet,
-ou si c'est de l'outillage superflu à cette échelle. Résultat à consigner dans le journal
-de bord, pas présupposé.
-
----
-
-## 2. Fiche des pratiques
-
-### 2.1 Pratiques appliquées dans ce projet
-
-| Pratique | Source | Retour d'expérience |
-|---|---|---|
-| Prompting structuré (contexte, non-objectifs, granularité) | Ajout | *à compléter* |
-| Cadrage par Q&A avant SPEC.md | Ajout | *à compléter* |
-| SPEC.md comme contrat fonctionnel évolutif | Fiche initiale | *à compléter* |
-| Harness (CLAUDE.md) construit progressivement, règles ajoutées après répétition | Fiche initiale (ajusté) | *à compléter* |
-| Divulgation progressive (docs/ spécifiques référencés) | Fiche initiale | *à compléter* |
-| TDD ciblé sur modules critiques uniquement | Fiche initiale (ajusté — pas dogmatique) | *à compléter* |
-| Tests sur données réelles anonymisées en plus des mocks | Ajout | *à compléter* |
-| Explore/Edit via Plan Mode | Fiche initiale | *à compléter* |
-| Diffs petits et revuables | Ajout | *à compléter* |
-| Suite de non-régression sur métriques calculées (valeurs de référence figées) | Ajout | *à compléter* |
-| Routage par niveau d'effort (pragmatique, pas Spark) | Fiche initiale (simplifié) | *à compléter* |
-| Secrets en `.env`, permissions Claude Code restreintes | Fiche initiale (simplifié) | *à compléter* |
-| Graphify + Agent Skills via MCP (prise en main) | Fiche initiale + demande explicite | Installé en avance sur l'étape 7 (voir journal) — vérifié réel via web (package `graphifyy`, PyPI + GitHub, non fabriqué contrairement à d'autres éléments de la fiche source) |
-| Journal de bord coût/bénéfice par pratique | Ajout | *à compléter* |
-| AGENTS.md canonique + CLAUDE.md en import (`@AGENTS.md`) | Demande explicite | Claude Code ne lit pas AGENTS.md nativement (vérifié) ; le symlink/import est le pattern officiellement supporté — repo compréhensible par n'importe quel agent sans rien casser côté Claude Code |
-| Règle explicite de non-présomption sur données externes (APIs Strava/Coros) dans AGENTS.md | Ajout, suite retour Gemini + incident réel | Ajoutée après un seul incident (schéma Strava halluciné, 25/08) au lieu des deux répétitions habituelles — dérogation assumée et documentée dans AGENTS.md, vu la gravité (pan fonctionnel manquant) ; *impact réel à confirmer au prochain Plan Mode touchant une API externe* |
-| Revue de code après un premier passage sur données réelles (skill `/code-review`) | Ajout | A trouvé un vrai bug de correction (watermark de reprise incrémentale) que ni les tests unitaires ni le Plan Mode initial n'avaient attrapé — complémentaire, pas redondant avec ces deux disciplines |
-
-### 2.2 Pratiques connues, non appliquées ici (bon à savoir)
-
-| Pratique | Pourquoi elle existe | Pourquoi pas ici |
-|---|---|---|
-| Formats colonnaires Parquet/ORC + partitionnement | Nécessaire à très gros volume (data engineering) | Quelques centaines/milliers d'activités : un SQLite/Postgres suffit, plus simple à déboguer avec l'IA |
-| NUMA-aware dual-socket, isolation façon CERN | Calcul HPC multi-tenant à très grande échelle | Projet solo, une seule charge de travail à la fois |
-| Kueue (gestion de quotas Kubernetes) | Fair-sharing de ressources entre équipes/jobs | Pas de cluster, pas de contention de ressources à gérer |
-| ContainerSSH + OIDC/OAuth2/Kerberos pour l'accès aux sessions | Accès sécurisé multi-utilisateurs à des environnements de calcul partagés | Un seul utilisateur, poste local : la protection `.env` + permissions Claude Code suffit |
-| Chiffres de benchmark non sourcés (ex : "MAE de 22.7") | — | Chiffre sans unité ni source dans le document d'origine, vraisemblablement fabriqué — on définira nos propres seuils empiriquement |
-| Budget strict de "150-200 instructions" pour CLAUDE.md | Éviter la dilution des règles | Le principe (rester concis) est valide, le chiffre précis est non vérifié — pas de règle numérique dure |
-| Vision via AST / graphes de dépendance systématiques | Utile sur de très grosses bases de code | Base de code d'un mini-projet : à réévaluer si Graphify s'avère utile même à cette échelle (question ouverte, pas tranchée) |
-
-*Cette section s'enrichit à chaque fois qu'on écarte une pratique en cours de route —
-avec la raison, pas juste le constat.*
-
----
-
-## 3. Journal de bord
-
-*(rempli au fil des étapes avec : pratique observée, contexte, gain/coût constaté, verdict)*
-
-### 2026-08-24 — Détour assumé : outillage avant cadrage
-
-Installation de Graphify et bascule AGENTS.md/CLAUDE.md faites juste après la
-configuration de base, donc avant l'étape 0 (cadrage Q&A) — en avance sur l'ordre
-défini en section 1. Décision explicite, pas un oubli :
-- Repo quasi vide → risque faible de casser quoi que ce soit, terrain sûr pour prendre
-  en main un nouvel outil.
-- Objectif explicite de prise en main de Graphify, indépendant du calendrier du projet.
-- Avant d'exécuter quoi que ce soit, vérification que les deux éléments cités par
-  l'utilisateur étaient réels (et pas un nouvel avatar du problème de la fiche
-  initiale) : Graphify existe et correspond à sa description (package `graphifyy` sur
-  PyPI, dépôt GitHub actif) ; AGENTS.md n'est en revanche PAS lu nativement par Claude
-  Code (vérifié par recherche web), d'où le choix du pattern import plutôt qu'un
-  remplacement pur et simple.
-- Point d'attention pour la suite : Graphify tourne sur un code encore vide — sa vraie
-  valeur (graphe de dépendances utile) ne pourra être évaluée qu'une fois du code réel
-  écrit. À réévaluer après l'étape 3 ou 4.
-
-### 2026-08-24 — Étape 0 (cadrage Q&A) et étape 1 (SPEC.md V1)
-
-L'utilisateur a fourni un document produit complet (4 modules : ingestion, sports sans
-montre, coaching adaptatif, stratégie de course) en demandant explicitement de prioriser
-plutôt que de tout spécifier. Bon test réel de l'étape 0 :
-
-- Reformulation du périmètre réduit avant de poser des questions, pour valider la
-  compréhension avant d'investir du temps dans le détail.
-- Une des questions de cadrage (accès API Coros) a révélé un vrai risque technique non
-  mentionné dans le document produit : l'API développeur officielle Coros nécessite une
-  approbation "entreprise", inadaptée à un projet perso. Recherche web faite avant de
-  trancher plutôt que de supposer — a permis de découvrir une alternative pertinente
-  (serveur MCP Coros, self-service) et surtout un fait simplificateur décisif : Coros
-  était déjà synchronisé vers Strava sur le compte réel de l'utilisateur, ce qui rend
-  Strava seul suffisant pour le V1. **Sans cette vérification, le SPEC V1 aurait
-  probablement embarqué une intégration Coros risquée dès le départ.**
-- Gain concret de l'étape 0 : le périmètre V1 rédigé dans `SPEC.md` est net (ingestion
-  Strava + module sans-montre + charge par zone, rien d'autre), alors que le document
-  produit initial aurait naturellement tiré vers une spec beaucoup plus large.
-- Le mapping "activité → zones corporelles par défaut" proposé par l'utilisateur pendant
-  le Q&A a changé la conception du module de charge (poids par défaut + surcharge
-  manuelle plutôt que saisie manuelle pure) — exemple concret où le cadrage a amélioré
-  la conception, pas juste réduit le scope.
-
-### 2026-08-25 — Schéma de données non vérifié en revue de plan
-
-Premier passage réel en Plan Mode (ingestion Strava). Le sous-agent de planification a
-produit un schéma SQLite complet (noms de colonnes, types) en le présentant avec
-assurance, sans jamais consulter la vraie documentation Strava — alors même que le
-`SPEC.md` demandait explicitement de vérifier ce point avant de le figer. L'utilisateur
-a posé la question directement ("comment sais-tu le schéma de données ?"), à trois
-reprises, avant que la vérification ne soit faite.
-
-**Ce qui a marché :** la question a été posée en revue de plan, donc avant qu'une seule
-ligne de code ne soit écrite — c'est précisément l'intérêt de la discipline Explore/Edit
-(étape 4) : le coût de l'erreur était encore nul. Vérification faite après coup :
-- L'objet "summary" (liste d'activités) et l'objet "detailed" (une activité) de l'API
-  Strava n'exposent pas les mêmes champs — le schéma halluciné mélangeait les deux sans
-  le savoir.
-- Un endpoint entier (`/activities/{id}/streams`, séries temporelles FC/allure/altitude)
-  était absent du plan — pas une erreur de détail, un pan fonctionnel manquant,
-  directement lié à un besoin produit réel exprimé dès le document de cadrage initial
-  (découplage aérobie, etc.) mais perdu en cours de route lors de la réduction du V1.
-- Cette même vérification a aussi fait revenir sur le choix de bibliothèque
-  (`requests` brut abandonné pour `stravalib`, maintenue et déjà correcte sur ce
-  schéma) : l'incident a servi d'argument concret dans un arbitrage qui semblait acquis.
-
-**Leçon pour le document final :** demander "comment sais-tu ça ?" sur une affirmation
-technique précise (schéma, nom de champ, signature de méthode) est une pratique de
-revue à elle seule, indépendante du Plan Mode — le Plan Mode crée juste le bon moment
-pour la poser à moindre coût.
-
-### 2026-08-25 — Revue de code post-implémentation (skill `/code-review`)
-
-Demandée après un premier sync réel réussi, sur `src/sport_coaching/ingestion` et
-`tests/ingestion`. 4 findings, dont un réel bug de correction (pas un style/nit) :
-le watermark de reprise incrémentale (`MAX(start_date)` en base) est recalculé après
-coup, mais `get_activities()` renvoie les activités du plus récent au plus ancien —
-si un sync est interrompu (rate limit, coupure réseau) après avoir committé
-seulement les toutes premières (les plus récentes), le prochain sync repart déjà du
-même watermark maximal et **ne récupère jamais les plus anciennes non traitées**,
-silencieusement.
-
-**Ce qui a marché :** le premier sync réel de l'utilisateur s'est déroulé sans
-interruption, donc ce bug précis n'a pas corrompu les données déjà en base — mais
-rien ne le garantissait, et un futur sync interrompu (quota Strava, coupure) l'aurait
-fait sans avertissement. Trouvé par une revue de code post-implémentation, avant que
-ça n'arrive, plutôt qu'en production.
-
-**Correction appliquée :** tout un `sync` devient une seule transaction SQLite
-(commit uniquement en fin de boucle, rollback complet sur exception) — un run
-interrompu redémarre proprement au même point plutôt que de faire avancer le
-watermark sur des données partielles. Un test de régression couvre explicitement ce
-scénario (`test_sync_rolls_back_entirely_on_error`).
-
-**Pour le document final :** une revue de code après un premier passage réel (données
-vraies, pas seulement des mocks) a trouvé un bug que ni les tests unitaires ni le Plan
-Mode initial n'avaient attrapé — les deux disciplines sont complémentaires, pas
-substituables l'une à l'autre.
-
-### 2026-08-25 — Audit de données + dashboard : le rendu réel comme discipline de vérification
-
-Deux tâches enchaînées sur les vraies données (271 activités) : audit descriptif
-(`notebooks/strava_data_audit.ipynb`) puis fonction de visualisation d'activité
-(`sport_coaching.metrics.activity_report`).
-
-**L'audit a de nouveau contredit une vérification pourtant faite sérieusement** : le
-Plan Mode du 25/08 avait confirmé par introspection que `average_heartrate`/
-`suffer_score`/`average_cadence` n'étaient PAS des champs du `SummaryActivity` de
-stravalib — exact au sens strict (`model_fields` ne les liste pas), mais le JSON brut
-réellement renvoyé par Strava les contient bien (champs "extra" que la lib laisse
-passer sans les déclarer). Les deux vérifications n'étaient pas contradictoires, mais
-l'introspection de bibliothèque et l'observation de données réelles répondent à des
-questions différentes — seule la seconde est vraiment probante sur "qu'est-ce que
-l'API renvoie". Schéma corrigé, colonnes ajoutées, backfill depuis `raw_json` déjà en
-base (pas de nouvel appel API nécessaire).
-
-**Le dashboard a révélé deux bugs qu'aucun test ni aucune relecture de code n'aurait
-attrapés — seul le fait de regarder l'image rendue les a montrés :**
-1. Cadence de course affichée deux fois trop faible (l'API Strava compte par jambe,
-   l'appli affiche le total) — vérifié après coup contre la communauté développeurs
-   Strava, corrigé avec un multiplicateur explicite et testé.
-2. Un arrêt réel pendant une sortie (feu rouge, pause) faisait exploser l'allure d'un
-   seul kilomètre à l'écran (~250 min/km), écrasant visuellement tous les autres
-   splits — invisible dans les données brutes ou un test unitaire construit à la main,
-   flagrant sur le graphique. Corrigé en excluant le temps non-`moving` du calcul.
-
-**Leçon pour le document final :** pour du code qui produit une sortie visuelle ou un
-résumé de données, "les tests passent" ne suffit pas à conclure que c'est correct —
-regarder le rendu final fait partie de la boucle de vérification, au même titre que
-les tests. Un test peut valider qu'une fonction ne plante pas sans jamais révéler
-qu'elle produit un résultat absurde.
-
-### 2026-08-25 — Retour Gemini sur AGENTS.md : un LLM tiers reproduit le même biais
-
-Demande d'avis externe (Gemini) sur deux idées d'ajout à `AGENTS.md` : un persona
-("tu es un expert...") et une règle de non-présomption sur les schémas d'API externes.
-Réponse de Gemini pertinente sur le fond (voir fiche §4), mais elle cite comme fait
-établi un seuil de "150 à 200 instructions" pour la taille d'un fichier de règles —
-exactement le même chiffre que ce document avait déjà flaggé comme non sourcé et
-vraisemblablement fabriqué en §2.2, sans que Gemini ne le sache. Confirmation en
-conditions réelles que la discipline "vérifier avant de croire" (cf. incident du
-25/08 ci-dessus) doit s'appliquer à l'avis d'un LLM tiers sur notre méthodologie,
-pas seulement au code produit par l'agent principal du projet.
-
----
-
-## 4. Catalogue des failles rencontrées
-
-Vue transverse, organisée par catégorie plutôt que par date : chaque ligne renvoie à
-l'entrée complète du journal (§3) au lieu de répéter le récit. Une catégorie sans
-exemple reste listée tant qu'elle reste pertinente pour le projet, marquée comme telle
-plutôt que supprimée — l'absence de cas est une information utile, pas un vide à
-combler artificiellement.
-
-| # | Catégorie | Exemple concret | Référence | Leçon retenue |
+| Artefact | Rôle | Junie | Claude Code | Chargement |
 |---|---|---|---|---|
-| 1 | Donnée non sourcée / fabriquée | Chiffre de benchmark ("MAE de 22.7") sans unité ni source dans le document produit initial ayant servi de base à la fiche de pratiques | §2.2 — 24/08 | Ne jamais reprendre un chiffre sans savoir d'où il vient ; définir ses propres seuils empiriquement plutôt que d'hériter d'une valeur non vérifiable |
-| 2 | Donnée non sourcée / fabriquée | Seuil "150-200 instructions" pour la taille d'un fichier de règles, repris tel quel par Gemini en conseil sur `AGENTS.md`, sans source citée | §3 — 25/08, "Retour Gemini sur AGENTS.md" | La vérification s'applique à toute source d'affirmation technique, y compris l'avis d'un LLM tiers sur notre propre méthodologie |
-| 3 | Absence de vérification avant affirmation technique | Schéma SQLite complet (colonnes, types) halluciné en Plan Mode pour l'ingestion Strava : mélange des objets `summary`/`detailed`, endpoint `/activities/{id}/streams` absent du plan | §3 — 25/08, "Schéma de données non vérifié en revue de plan" | Poser "comment sais-tu ça ?" sur toute affirmation de schéma/API/signature avant qu'elle soit figée — coût nul si posé en Plan Mode, avant la moindre ligne de code |
-| 4 | Complexification inutile d'une tâche (sur-ingénierie, robustesse non demandée) | Aucun cas observé à ce jour | — | Catégorie connue mais pas encore rencontrée dans ce projet — à surveiller notamment lors des tâches plus larges (étapes 3-4, TDD et Plan Mode répétés) |
-| 5 | Bug invisible aux tests, visible seulement au rendu réel | Cadence de course affichée 2x trop faible (unité API vs appli) ; un arrêt réel gonflant l'allure d'un split à ~250 min/km, écrasant tout le graphique | §3 — 25/08, "Audit de données + dashboard" | Pour du code produisant une sortie visuelle/un résumé, regarder le rendu final fait partie de la vérification — un test qui ne plante pas n'exclut pas un résultat absurde |
+| `AGENTS.md` | Constitution du projet | `.junie/AGENTS.md` ou racine | `CLAUDE.md` (+`@AGENTS.md`) | Toujours |
+| Spec | Contrat fonctionnel par feature | `specs/<N>-.../spec.md` | idem | À l'ouverture de la feature |
+| Doc / règle spécialisée | Détail d'un sous-domaine | `.junie/rules/*.md` | fichier référencé (@) | Sur référence |
+| Skill | Convention réutilisable auto-routée | `skill-locations` (CLI) | `SKILL.md` | À la demande |
 
-*Table mise à jour à chaque nouvelle entrée de journal qui révèle une faille — pas
-seulement les incidents "négatifs" : une vérification qui a empêché une faille reste
-dans le journal (§3) mais n'entre ici que si la faille a réellement eu lieu.*
+## 1.5 — Arborescence de repo proposée
+
+**Version générale** (standard `AGENTS.md`, agent-agnostique) :
+
+```
+mon-projet/
+├─ AGENTS.md          # fichier de directives racine (standard inter-outils)
+├─ .aiignore          # fichiers interdits à l'agent (secrets, /vendor…)
+├─ .env               # secrets — NON commité (.gitignore)
+├─ docs/
+│  ├─ ARCHITECTURE.md # carte du code (économise des tokens)
+│  ├─ DATABOOK.md     # schéma de base annoté (clé en brownfield)
+│  └─ <sous-domaine>.md # docs spécialisées → divulgation progressive
+├─ specs/
+│  ├─ 001-<feature>/  # spec.md · plan.md · tasks.md
+│  └─ 002-<feature>/ …
+├─ src/ …
+└─ tests/ …
+```
+
+**Version Junie** (ce qui change) :
+
+```
+mon-projet/
+├─ AGENTS.md              # (ou .junie/AGENTS.md) emplacement primaire lu par Junie
+├─ .junie/
+│  ├─ rules/              # divulgation progressive : règles éclatées
+│  │  ├─ style.md · redaction-spec.md · brownfield.md
+│  ├─ config.json         # settings CLI partagés (model, effort, brave, hooks)
+│  └─ guidelines.md       # (legacy, seulement si existant)
+├─ .aiignore              # ≈ « deny » d'accès fichiers (secrets)
+├─ mcp.json               # serveurs MCP
+├─ specs/… · docs/…       # conventions indépendantes de l'outil (identiques)
+└─ (hors repo) ~/.junie/allowlist.json  # règles allow/ask par type d'action
+```
+
+Les dossiers `specs/` et `docs/` sont des conventions posées *au-dessus* de l'outil :
+identiques dans les deux cas.
+
+---
+
+# PARTIE 2 — La boucle par feature
+
+Le cœur séquentiel. Pour *chaque* unité de travail, on déroule une boucle à **deux
+régimes** : neuf (greenfield) ou modification d'existant (brownfield) — même exigence
+de vérification, chemins opposés.
+
+## 2.1 — Le point de départ commun : le cadrage par Q&A
+
+Avant d'écrire le moindre spec, on ne part pas d'une intention déjà figée. On donne le
+besoin en une ou deux phrases, puis on demande **explicitement à l'IA de poser ses
+questions de clarification**. Un humain qui rédige seul laisse des angles morts
+implicites que l'IA ne peut pas deviner ; la forcer à interroger les fait remonter
+*avant* qu'ils ne coûtent des itérations.
+
+Déroulé : besoin en 1–2 phrases → *« Avant de rédiger le spec, pose-moi toutes les
+questions pour lever les ambiguïtés »* → on répond, on itère jusqu'à épuisement des
+questions bloquantes → seulement alors, le spec.
+
+## 2.2 — Régime greenfield (nouvelle feature) — « spec-driven »
+
+On part d'une spec claire et de garde-fous ; l'IA agit comme un **exécutant rapide sans
+marge d'interprétation**. Idéal pour le boilerplate, l'UI, les modules bien cadrés. Le
+flux : **Specify** (le quoi) → **Plan** (le comment, discipline Explore/Edit §2.5) →
+**Tasks** (découpage) → **Implement** (petits diffs).
+
+**TDD ciblé, pas dogmatique.** Écrire le test *avant* le code, mais **uniquement là où
+une erreur silencieuse coûterait cher** : calculs métier sensibles, parsing de formats
+externes, règles de droits. Pas de dogmatisme sur l'UI ou la plomberie.
+
+**Variante — le test-first piloté par la couverture :** (1) concevoir d'abord le **plan
+de tests** sous forme de tableau (cas nominal, limites, erreurs…), visant une cible
+(~90 %), *sans* écrire le code — un artefact que l'humain valide ; (2) puis générer les
+tests en cohérence. *90 % est une cible, pas un dogme* : la couverture mesure ce qui
+est *exécuté*, pas *vérifié*.
+
+> **⚠ UN TEST VERT NE GARANTIT PAS UN RÉSULTAT CORRECT**
+>
+> Pour tout code produisant une sortie visuelle ou un résumé (graphique, rapport,
+> dashboard), un test peut valider que la fonction ne plante pas sans révéler un
+> résultat absurde. Regarder le rendu final fait partie de la vérification. C'est le
+> piège « **AI test theater** » : des tests verts qui ne vérifient rien de réel.
+
+## 2.3 — Régime brownfield (modifier du legacy) — « comprendre d'abord »
+
+Le régime le plus exigeant, et le plus fréquent sur une base ancienne. **Presque tout y
+est inversé** par rapport au greenfield.
+
+**La « Convention Inversion ».** En greenfield, l'agent *propose* les conventions. En
+brownfield, il doit **se soumettre à des conventions préexistantes, implicites et non
+documentées** qu'il ne peut pas deviner. Livré à lui-même, il comble les vides avec ses
+conventions « modernes » — et casse la cohérence du code ancien. **Toute la méthode
+consiste à rendre explicite l'implicite *avant* de laisser l'IA écrire.**
+
+Les risques spécifiques : l'agent (1) hallucine une convention moderne ; (2)
+« améliore » du code qui avait une raison non évidente (*Chesterton's fence*) ; (3)
+réécrit au lieu de patcher (effet « second système ») ; (4) travaille à l'aveugle sur
+des dépendances hors contexte ; (5) modifie silencieusement une règle métier implicite ;
+(6) se trompe sur le schéma de base → corruption de données.
+
+Le « **dossier de reprise** » d'une zone legacy (pendant brownfield de la spec) — ciblé
+sur la zone, jamais tout le legacy d'un coup :
+
+1. **Cartographier la zone** — exploration en lecture seule : qui appelle ce code,
+   qu'appelle-t-il, quelles données. Produire une carte de dépendances.
+2. **Documenter l'existant** (IA rédige, humain valide contre le métier) — c'est là que
+   l'IA excelle le plus.
+3. **Extraire et expliciter les conventions implicites** → les écrire dans
+   `AGENTS.md` / `.junie/rules/`. C'est l'acte qui renverse la Convention Inversion.
+4. **Databook / schéma de base annoté** : tables, relations, sens métier des colonnes,
+   valeurs magiques, dénormalisations. L'IA génère depuis le DDL, l'humain annote.
+5. **Characterization tests / golden master AVANT tout changement.** Règle d'or :
+   « pas de characterization tests → pas de refacto IA ».
+6. **Contraintes de version explicites** dans `AGENTS.md` (ex. « PHP 5.6, pas de
+   syntaxe PHP 8 »).
+7. **Interdire toute nouvelle dépendance / pattern** sans validation.
+8. **Chesterton's fence** : ne rien supprimer dont on ne comprend pas la raison.
+9. **Micro-pas + strangler fig + rollback prêt** ; 1 changement = 1 intention ; **ne
+   JAMAIS réécrire de zéro**.
+
+> **💡 L'IDÉE-FORCE EN FORMATION**
+>
+> En brownfield, le gros du travail IA est **en amont** (cartographier, documenter,
+> expliciter, poser le filet de tests) ; la génération de code ne vient qu'après, très
+> encadrée. C'est l'inverse de l'intuition « l'IA va vite réécrire le vieux code ».
+
+## 2.4 — Greenfield vs brownfield, en un tableau
+
+| | Greenfield (neuf) | Brownfield (legacy) |
+|---|---|---|
+| Logique | Spec-driven : spécifier puis générer | Comprendre d'abord, puis modifier |
+| Rôle de l'agent | Propose les conventions | Se soumet (Convention Inversion) |
+| Point de départ | Spec claire + garde-fous | Dossier de reprise : carte + doc + conventions |
+| Filet de test | Test-first sur modules sensibles | Characterization tests avant refacto |
+| Où est l'effort IA | Sur la génération de code | En amont (comprendre, documenter, filet) |
+| Progression | Petits diffs, une intention | Micro-pas, strangler fig, jamais de big-bang |
+| Interdit clé | Générer sans definition of done | Réécrire de zéro (second système) |
+
+## 2.5 — La discipline Explore/Edit (« Plan mode »)
+
+Toute tâche touchant plusieurs fichiers passe par une **phase d'exploration en lecture
+seule avant l'édition**. Le mécanisme fiable n'est pas une phrase de consigne mais une
+**contrainte imposée par l'outil** : forcer le démarrage en lecture seule/plan. **Une
+règle appliquée vaut mieux qu'une règle demandée.**
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> On force ce comportement via `defaultMode: "plan"` dans `permissions` de
+> `settings.json` : chaque session démarre en lecture seule, la sortie se fait par
+> validation du plan.
+
+> **▶ CÔTÉ JUNIE ⚠ (À TESTER)**
+>
+> Pas d'équivalent documenté d'un « mode plan forcé » par configuration. Le garde-fou
+> apparenté est double : la séparation **Ask mode** (planifier, aucune édition) /
+> **Code mode** (agent complet), et l'**Action Allowlist** qui, hors « brave mode »,
+> exige une confirmation par défaut (voir §5.1).
+
+| Outil | Mécanisme plan / édition |
+|---|---|
+| Junie | Séparation native Ask mode / Code mode ; le plan se valide avant exécution |
+| Claude Code | Plan mode dans la même conversation ; forçable via `settings.json` |
+| Cursor | Pas de bascule native ; explorer dans un thread, ouvrir un thread neuf nourri du plan |
+| Google Antigravity | Fichiers de règles ; pas de mode plan/édition natif documenté |
+
+La discipline symétrique, **côté sortie**, est la **revue de code** (§2.6) : le plan
+réduit les erreurs de *conception* ; la revue attrape des bugs d'*exécution*.
+Complémentaires, pas substituables.
+
+## 2.6 — La revue de code (discipline de sortie)
+
+Après un premier passage — idéalement sur données réelles — une revue dédiée attrape
+des bugs que ni les tests ni le plan n'avaient exposés. Outillée (skill/commande) ou
+manuelle, elle est **complémentaire**, jamais redondante.
+
+> **RAPPEL TRANSVERSAL**
+>
+> « **1 PR = 1 intention** ». Petites tâches, petits diffs : une fonction, un fichier,
+> une frontière à la fois. Jamais « Accept All » à l'aveugle ; commit + test après
+> chaque changement. Le gros diff fourre-tout est une PR que personne ne comprend.
+
+---
+
+# PARTIE 3 — Piloter l'effort et les modèles
+
+Toutes les tâches ne méritent pas le même « effort » de raisonnement. Les tâches de
+**raisonnement** (architecture, cadrage) méritent un effort élevé ; les tâches
+**mécaniques** (renommage, nettoyage) non. Deux réalités à ne pas confondre : le
+**routage automatique** (l'outil choisit) et la **discipline manuelle** (vous
+ajustez).
+
+| Outil | Routage / sélection du modèle |
+|---|---|
+| Cursor | Routage automatique réel : un routeur classe chaque requête et choisit frontier vs économique |
+| Junie | Partiellement automatique : auto-sélection + effort ajustable |
+| Claude Code | Aucun routage auto : modèle/effort explicites ; un sous-agent peut recevoir un modèle différent |
+| Google Antigravity | Manuel : sélection du modèle et du niveau d'effort (Low/Medium/High) |
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> Commandes concrètes (`/model`, `/effort`, `--model`, `--effort`). Ce qui est
+> portable, c'est le **principe** (« adapter l'effort à la tâche »), pas la commande.
+
+> **▶ CÔTÉ JUNIE**
+>
+> Le modèle et l'effort se posent dans `config.json` (`model`, `effort`,
+> `provider`/`byok`). L'auto-sélection couvre déjà une partie du « routage par effort ».
+
+> **⚠ À VÉRIFIER / RÉSERVE**
+>
+> **Piste : modèle capable pour le plan, modèle léger pour l'exécution.** Séduisant,
+> mais (1) le comportement d'un changement de modèle en cours de session n'est pas
+> garanti, et (2) un modèle léger peut introduire des bugs subtils : **l'économie ne se
+> substitue jamais à la vérification.**
+
+---
+
+# PARTIE 4 — Économie de tokens
+
+Contre-intuitif mais central : **un contexte ciblé coûte moins cher ET produit un
+meilleur code**. Quelques milliers de tokens *utiles* battent des dizaines de milliers
+de tokens *vagues*.
+
+## 4.1 — Pourquoi le contexte « lean » gagne sur les deux tableaux
+
+Un contexte trop chargé **dilue l'attention** (le *context rot*), **noie les
+directives** dans le bruit, et **coûte plus de tokens** à chaque tour (tout l'historique
+est retraité). Réduire le contexte = gagner en coût *et* en qualité.
+
+## 4.2 — Les leviers
+
+| Levier | Principe |
+|---|---|
+| Hygiène de contexte | Conversation neuve en changeant de sujet ; compacter quand la limite approche |
+| Contexte ciblé | Donner les 2–3 bons fichiers, pas tout le dépôt |
+| Carte du code | Un `ARCHITECTURE.md` évite de lire 25 fichiers pour en comprendre 3 |
+| Cache de prompt | Mettre le stable en premier (instructions, schémas) |
+| Router les modèles | Léger pour le simple, gros pour le complexe |
+| Plan puis exécution | Raisonner une fois en mode plan, exécuter ensuite |
+| Batch / non interactif | Traitements en lot |
+| Outils MCP sobres | Renvoyer des champs minimaux |
+
+## 4.3 — Hygiène de contexte : mécanismes
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> `/clear` (conversation neuve, garde la mémoire projet) en changeant de tâche ;
+> `/compact` (compresse l'historique) quand la limite approche ; `/btw` (question
+> annexe hors historique).
+
+> **▶ CÔTÉ JUNIE**
+>
+> Réflexe équivalent : ouvrir une **nouvelle conversation/tâche** en changeant de sujet
+> plutôt que d'accumuler un fil interminable (le 10ᵉ message coûte ~10× le premier).
+> ⚠ Un équivalent « compact » côté Junie est à confirmer.
+
+---
+
+# PARTIE 5 — Sécurité et garde-fous proportionnés
+
+Principe : une sécurité **proportionnée au risque réel**, appliquée par des
+**mécanismes** (pas seulement des recommandations dans un fichier).
+
+## 5.1 — Secrets et permissions
+
+Les secrets (jetons, clés d'API) vivent dans un fichier non commité (type `.env`),
+jamais lus ni affichés par l'agent. Cette interdiction doit être **appliquée**, pas
+seulement recommandée.
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> Section `permissions` de `settings.json` avec `allow` / `ask` / `deny` : lecture et
+> tests pré-approuvés (`allow`) ; actions modifiant les dépendances en confirmation
+> (`ask`) ; lecture des secrets et commandes destructrices en refus (`deny`). Extrait
+> en Annexe B.5.
+
+> **▶ CÔTÉ JUNIE ⚠ (À TESTER)**
+>
+> Correspondance partielle via l'**Action Allowlist**. Côté CLI : `~/.junie/config.json`
+> et `.junie/config.json` (réglages), et `~/.junie/allowlist.json` (règles par type
+> d'action : `fileEditing`, `executables`, `mcpTools`, `readOutsideProject`,
+> `readSecretFile`) avec niveaux `allow`/`ask`. Côté IDE : allowlist en UI ;
+> `.aiignore` bloque l'accès à des fichiers.
+
+| Claude Code | Junie CLI | Junie IDE |
+|---|---|---|
+| `allow` | `allow` | règle « auto-approve » |
+| `ask` | `ask` (défaut hors brave) | confirmation par défaut |
+| `deny` | pas de `deny` natif — approximé par `readSecretFile: ask`, `.aiignore` | `.aiignore` (fichiers) |
+| `defaultMode: plan` | pas d'équivalent documenté | pas d'équivalent documenté |
+| `hooks` | champ `hooks` de `config.json` | — |
+
+> **🔒 POINT CLÉ POUR LA FORMATION**
+>
+> Junie n'a pas de liste `deny` native. La protection des secrets passe par
+> `.aiignore` (et/ou `readSecretFile: ask`), pas par un refus de lecture ; le « jamais
+> ça » se reconstitue par des allowlists restrictives + les protections de branche/CI.
+
+## 5.2 — Hooks (automatisation événementielle)
+
+Les **hooks** décident **ce qui se passe automatiquement autour** d'une action
+(reformater après édition, lancer les tests, bloquer une commande par un pattern).
+Deux règles : ne pas dupliquer un outillage existant juste pour avoir un hook ; écrire
+les diagnostics sur `stderr` pour que l'agent voie *pourquoi* une action a été bloquée.
+
+> **🔒 LIMITE IMPORTANTE (TOUS OUTILS)**
+>
+> Ces garde-fous locaux sont une discipline de *confort en session*. Ils ne
+> remplacent **pas** la CI, la protection de branche ou les contrôles
+> d'infrastructure — la couche d'application qui fait foi.
+
+## 5.3 — Confiance dans le contenu externe (injection de prompt indirecte)
+
+Dès qu'un agent lit un contenu **qu'il n'a pas produit** — réponse d'API, page web,
+sortie d'un serveur MCP tiers — il doit être traité comme **non fiable par défaut**,
+comme une entrée utilisateur non validée.
+
+> **🔒 LE « LETHAL TRIFECTA »**
+>
+> Le risque (décrit par Simon Willison) apparaît quand trois conditions se
+> combinent : accès à des **données privées** + exposition à du **contenu non
+> fiable** + capacité à **communiquer vers l'extérieur**. Un serveur MCP tiers se
+> scrute avec la même rigueur qu'une dépendance externe.
+
+## 5.4 — Revue humaine sur le sensible
+
+Sur l'authentification, le paiement, les données personnelles (RGPD), le chiffrement :
+**expertise humaine obligatoire**, jamais d'écriture automatique. C'est le miroir
+sécurité de la revue de code (§2.6).
+
+## 5.5 — Les pièges à garder en tête
+
+- **Sécurité en angle mort** — secrets en clair, clés exposées, injections.
+- **« AI test theater »** — des tests verts qui ne vérifient rien (§2.2).
+- **Dette & archi emmêlée** — plusieurs libs pour la même tâche, styles incohérents,
+  code plausible mais faux.
+- **Sur-confiance** — « Accept All » sans relire ; on perd la capacité à déboguer son
+  propre code.
+- **Le big-bang** — tout nettoyer en un gros diff.
+- **L'agent sans garde-fou** — un agent qui ignore un « code freeze » ou touche à la
+  prod.
+
+---
+
+# PARTIE 6 — Passage à l'échelle : parallélisation
+
+Au-delà d'une tâche à la fois : les *git worktrees* permettent de checkouter plusieurs
+branches du même dépôt dans des dossiers séparés, chacun avec sa session d'agent, sans
+se marcher dessus.
+
+**Le vrai piège n'est pas technique, il est organisationnel.** Des agents parallèles
+qui éditent la même zone ou partent d'hypothèses incompatibles cassent le dépôt aussi
+vite qu'ils accélèrent. Ça ne marche que si **chaque tâche est scopée et indépendante
+avant** de lancer le parallélisme (un spec par feature, une tâche par worktree), avec
+tests et vérifications avant fusion.
+
+**Au-delà d'un certain nombre de worktrees, le goulot devient la revue humaine, pas
+l'agent.** C'est la vraie limite d'échelle : la vérification humaine reste le facteur
+limitant.
+
+> **▶ CÔTÉ JUNIE**
+>
+> La parallélisation par worktrees est une pratique **niveau git**, indépendante de
+> l'agent : plusieurs checkouts, une session Junie par dossier.
+
+> **⚠ À VÉRIFIER / RÉSERVE**
+>
+> Les ordres de grandeur (« 4–8 worktrees par développeur ») sont des retours d'usage
+> rapportés, pas une mesure.
+
+---
+
+# ANNEXE A — Bien prompter (discipline transversale)
+
+*En annexe car elle fait l'objet d'un support dédié. Rappel des principes qui
+traversent tout le document.*
+
+## A.1 — La règle d'or : être clair et précis
+
+Un prompt ambigu produit une réponse ambiguë. Donner détails et contexte : « Qui était
+président du Mexique en 2021 ? » plutôt que « Qui était président ? ».
+
+## A.2 — Construire un prompt : combiner des briques
+
+Un prompt structuré combine : **Rôle · Contexte · Objectif · Résultat attendu ·
+Contrainte · Format**. Les **délimiteurs** encadrent les données (`<email>` …
+`</email>`) pour que le modèle ne confonde pas consigne et contenu. Préférer **les
+instructions aux contraintes** (« Sois clair » plutôt que « Ne sois pas ambigu »).
+
+## A.3 — Principes spécifiques au développement assisté
+
+- **Contexte avant tâche** — dire *pourquoi* avant *quoi*.
+- **Expliciter les non-objectifs** — « Pas besoin de gérer le multi-utilisateur ici ».
+- **Un niveau de granularité à la fois** — ne pas mélanger cadrage et implémentation.
+- **Séparer lecture et écriture** — « explique-moi » vs « modifie » jamais ambigus.
+- **Donner le critère de succès** (definition of done) — sans lui, sur-ingénierie ou
+  sous-livraison.
+- **Corriger tout de suite**, pas trois tours plus tard.
+- **Éviter le vague évaluatif** (« améliore ça ») : préciser la dimension (lisibilité,
+  perf, sécurité).
+- **Donner le périmètre** (« ne touche pas au module X »).
+
+## A.4 — Techniques avancées (rappel)
+
+- **Zero-shot** — aucune démonstration.
+- **One-shot / few-shot** — un ou plusieurs exemples pour suggérer un pattern.
+- **Step-back** — considérer d'abord une question générale, puis la tâche spécifique.
+- **Chain-of-Thought (CoT)** — demander des étapes de raisonnement intermédiaires.
+
+---
+
+# ANNEXE B — Bibliothèque d'exemples complets
+
+*Exemples génériques illustrant le format attendu — à adapter, pas à recopier tels
+quels.*
+
+## B.1 — `AGENTS.md` complet
+
+```
+# AGENTS.md — MaListe
+## Contexte
+Appli web de listes de tâches. Python 3.12 (FastAPI) + SQLite.
+Une seule page, pas de comptes utilisateurs pour l'instant.
+## Commandes
+Lancer : make dev · Tests : make test · Lint : make lint
+## Règles
+Fonctions courtes, typées. Pas d'état global.
+Dates : toujours ISO 8601, jamais de format local en base.
+Un test par nouvelle fonction dans src/services/.
+Erreurs : lever des exceptions typées, jamais renvoyer None en cas d'échec.
+## Ne pas faire
+Ne pas ajouter de librairie sans demander.
+Ne pas toucher à src/legacy/ (gelée). Ne pas lire ni afficher .env.
+## Docs spécialisées (chargées à la demande)
+Parsing des imports : voir docs/PARSING.md · Conventions d'API : voir docs/API.md
+```
+
+## B.2 — Skill complet (`SKILL.md`)
+
+```
+---
+name: messages-de-commit
+description: Format des messages de commit et titres de PR de l'équipe.
+  Utiliser quand on rédige un commit, une pull request, ou une note de version.
+---
+# Messages de commit
+## Format
+`type(portée): description à l'impératif`
+Types autorisés : feat, fix, docs, refactor, test, chore
+## Exemples
+✓ feat(taches): ajouter le filtre par date
+✗ update — trop vague     ✗ « J'ai corrigé le bug » — pas à l'impératif
+## Règles
+- Titre : 72 caractères max, pas de point final.
+- Si le commit corrige un ticket, ajouter Refs #123 en pied.
+- Un commit = un changement logique.
+```
+
+## B.3 — Spec complet
+
+```
+# spec — Export CSV des congés d'un collaborateur
+## Objectif
+Permettre à un collaborateur (et au rôle RH) d'exporter ses congés au format CSV.
+## Comportement attendu
+Endpoint : GET /exports/conges/{id}     Sortie : CSV, UTF-8, séparateur ';'
+Colonnes : date (ISO 8601), type, statut
+Droits   : le collaborateur {id} lui-même OU un utilisateur du rôle RH
+Volume   : pagination 1000 lignes par page
+## Cas limites
+- Appelant non autorisé → 403
+- Collaborateur sans aucun congé → CSV avec la ligne d'en-têtes seule
+- Valeurs contenant ';' ou saut de ligne → échappement CSV correct
+- {id} inexistant → 404
+## Hors scope
+- Export multi-collaborateurs - Format Excel natif (.xlsx) - Filtres par période
+```
+
+## B.4 — Plan de tests piloté par la couverture (gabarit tableau)
+
+Étape 1 de la variante §2.2 : produire ce tableau AVANT d'écrire les tests, puis le
+valider.
+
+| # | Cas | Type | Entrée | Sortie attendue | Priorité |
+|---|---|---|---|---|---|
+| 1 | Nominal | fonctionnel | congés valides | CSV complet, colonnes correctes | haute |
+| 2 | Droits refusés | sécurité | appelant tiers | 403 | haute |
+| 3 | Sans congé | limite | id valide, 0 congé | CSV en-têtes seules | moyenne |
+| 4 | Caractères spéciaux | robustesse | valeur avec `;` | champ échappé | moyenne |
+| 5 | Id inexistant | erreur | id inconnu | 404 | moyenne |
+
+## B.5 — Extrait de permissions (Claude Code)
+
+> **⚙ SPÉCIFIQUE CLAUDE CODE**
+>
+> Illustre le principe « la restriction est appliquée par un mécanisme ». À transposer
+> conceptuellement pour Junie (§5.1), pas à recopier.
+
+```jsonc
+{
+  "permissions": {
+    "defaultMode": "plan",              // lecture seule par défaut au démarrage
+    "allow": [
+      "Read", "Glob", "Grep",
+      "Bash(npm run test:*)", "Bash(npm run lint:*)",
+      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)"
+    ],
+    "ask": [ "Bash(git push:*)", "Bash(npm install:*)" ],
+    "deny": [
+      "Read(.env*)", "Read(secrets/**)",
+      "Bash(rm -rf:*)", "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)", "Bash(curl:* | sh)"
+    ]
+  }
+}
+```
+
+---
+
+# ANNEXE C — Fiche outillage : spec-kit
+
+**Ce que c'est.** Un outil en ligne de commande (CLI Python) publié par l'organisation
+**GitHub officielle** (`github/spec-kit`), sous licence MIT, très adopté. Il outille la
+méthode « spec-driven » : scaffolding, fichiers de workflow, intégration avec de
+nombreux agents.
+
+**Ce n'est pas** une extension d'IDE. On l'installe via `uv` / `uvx`, puis des
+commandes comme `specify init` génèrent le flux `specify → plan → tasks → implement`.
+
+**À retenir :** la convention `SPEC.md` (un spec par feature, dossiers numérotés,
+séparation spec/plan) s'adopte **sans installer aucun outil**. spec-kit n'est qu'une
+implémentation de référence qui automatise cette convention.
+
+> **🔒 SÉCURITÉ**
+>
+> Cœur = dépôt officiel GitHub (confiance haute). Deux réserves : (1) c'est un CLI qui
+> **exécute du code et télécharge des ressources** ; (2) le dépôt indique, pour ses
+> presets communautaires, « Review source code before installation ». Donc : cœur
+> officiel = OK ; presets tiers = à réviser. **Adopter la convention ne nécessite
+> aucune installation.**
+
+> **⚠ À VÉRIFIER / RÉSERVE**
+>
+> Noms exacts des commandes, arborescence et liste des agents compatibles (dont Junie)
+> à revérifier sur le dépôt avant support.
+
+---
+
+# ANNEXE D — Glossaire
+
+- **Artefact** — fichier durable produit et réutilisé dans le flux (spec, plan,
+  `AGENTS.md`, tests, doc).
+- **Vibe coding** — décrire une intention et laisser l'IA générer ; devient «
+  développement assisté » dès qu'on relit, teste et sait expliquer.
+- **Socle / harnais** — l'ensemble des artefacts de contexte stables (`AGENTS.md`,
+  docs, skills, permissions).
+- **`AGENTS.md`** — fichier de directives lu en priorité ; standard inter-outils.
+- **Spec** — contrat fonctionnel d'*une* feature (le quoi), distinct du **plan** (le
+  comment).
+- **Skill** — connaissance/convention réutilisable chargée à la demande (`SKILL.md`),
+  routée par sa `description`.
+- **MCP** — protocole permettant à un agent de dialoguer avec des serveurs/outils
+  externes. Indépendant des skills.
+- **TDD** — écrire le test avant le code, puis coder juste ce qu'il faut pour le faire
+  passer.
+- **Plan mode / Explore-Edit** — phase d'exploration en lecture seule imposée avant
+  l'édition.
+- **Convention Inversion** — en brownfield, l'agent se soumet aux conventions
+  existantes au lieu de proposer les siennes.
+- **Characterization tests** — tests qui figent le comportement *actuel* d'un code
+  legacy avant tout refacto.
+- **Databook** — documentation annotée du schéma de base (tables, relations, sens
+  métier, valeurs magiques).
+- **Strangler fig** — migration progressive qui remplace l'ancien par du neuf sans
+  big-bang.
+- **Chesterton's fence** — ne pas retirer ce dont on ne comprend pas la raison d'être.
+- **Context rot** — dilution de l'attention du modèle quand le contexte est trop
+  chargé.
+- **Lethal trifecta** — données privées + contenu non fiable + capacité
+  d'exfiltration.
+- **Worktree** — checkout d'une branche git dans un dossier séparé, pour paralléliser
+  des sessions.
+- **AI test theater** — des tests générés qui passent au vert sans rien vérifier de
+  réel.
+- **Brave mode (Junie)** — mode d'auto-approbation qui lève la confirmation des
+  actions sensibles.
+
+---
+
+*Document de travail — à enrichir au fil de la pratique. Les encarts « À vérifier »
+signalent ce qui doit être confirmé avant de nourrir un support de formation. Agent de
+référence : Junie (JetBrains).*
